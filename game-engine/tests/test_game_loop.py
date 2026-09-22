@@ -163,7 +163,7 @@ def test_complete_game_on_each_production_layout(layout_name: str) -> None:
             state = transition(state, GameAction.hop(house_id, house.geometry.center)).state
 
         state = transition(state, GameAction.begin_hopping_back()).state
-        for house_id in reversed(path):
+        for house_id in reversed(path[:-1]):
             house = next(house for house in layout.houses if house.id == house_id)
             state = transition(state, GameAction.hop(house_id, house.geometry.center)).state
 
