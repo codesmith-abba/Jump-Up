@@ -48,6 +48,21 @@ def _current_turn(state: GameState) -> TurnState:
     return state.turn
 
 
+def _calculate_winner(state: GameState) -> WinnerState:
+    scores = state.scores
+    if not scores:
+        return WinnerState(is_final=True)
+    highest = max(scores.values())
+    leaders = tuple(sorted(player_id for player_id, score in scores.items() if score == highest))
+    if len(leaders) == 1:
+        return WinnerState(player_id=leaders[0], is_final=True)
+    return WinnerState(player_id=None, is_final=True, tied_player_ids=leaders)
+
+
+def _all_houses_claimed(state: GameState) -> bool:
+    return len(state.ownership) == len(state.layout.houses)
+
+
 def _start_game(state: GameState) -> GameState:
     _require_phase(state, GamePhase.SETUP)
     if len(state.players) < state.config.min_players:
@@ -176,7 +191,9 @@ def _pickup_stone(state: GameState) -> GameState:
     if turn.movement is None or not can_pickup_stone(turn.movement):
         return _movement_failure(state, "stone_pickup_requires_one_leg_return_to_target")
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
+        replace(stone, location_house_id=None, in_hand=True)
+        if stone.id == turn.stone_id
+        else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
@@ -263,12 +280,15 @@ def _resolve_claim(state: GameState, action: GameAction) -> GameState:
         successful=True,
         failure_reason=None,
     )
-    return replace(
+    next_state = replace(
         state,
         phase=GamePhase.NEXT_HOUSE,
         ownership=ownership,
         claim=resolved,
     )
+    if _all_houses_claimed(next_state):
+        return replace(next_state, phase=GamePhase.GAME_OVER, winner=_calculate_winner(next_state))
+    return next_state
 
 
 def _next_house(state: GameState) -> GameState:
@@ -330,11 +350,10 @@ def _end_game(state: GameState, player_id: str | None) -> GameState:
     )
     if player_id is not None:
         _require_player(state, player_id)
-    return replace(
-        state,
-        phase=GamePhase.GAME_OVER,
-        winner=WinnerState(player_id=player_id, is_final=True),
-    )
+        winner = WinnerState(player_id=player_id, is_final=True)
+    else:
+        winner = _calculate_winner(state)
+    return replace(state, phase=GamePhase.GAME_OVER, winner=winner)
 
 
 def transition(state: GameState, action: GameAction) -> TransitionResult:
