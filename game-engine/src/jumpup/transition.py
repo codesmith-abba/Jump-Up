@@ -110,11 +110,7 @@ def _resolve_throw(state: GameState, action: GameAction) -> GameState:
             ),
         )
     stones = tuple(
-        replace(
-            stone,
-            location_house_id=turn.target_house_id,
-            in_hand=False,
-        )
+        replace(stone, location_house_id=turn.target_house_id, in_hand=False)
         if stone.id == turn.stone_id
         else stone
         for stone in state.stones
@@ -122,10 +118,21 @@ def _resolve_throw(state: GameState, action: GameAction) -> GameState:
     return replace(state, phase=GamePhase.HOPPING_OUT, stones=stones)
 
 
-def _begin_hopping_out(state: GameState) -> GameState:
+def _begin_hopping_out(state: GameState, movement_path: tuple[str, ...] | None) -> GameState:
     _require_phase(state, GamePhase.HOPPING_OUT)
+    if movement_path is None:
+        raise InvalidTransitionError(
+            "begin_hopping_out requires an explicit layout-specific movement path"
+        )
     turn = _current_turn(state)
-    movement = begin_hopping(state.layout, turn.target_house_id)
+    try:
+        movement = begin_hopping(
+            state.layout,
+            turn.target_house_id,
+            movement_path,
+        )
+    except MovementValidationError as exc:
+        return _movement_failure(state, str(exc))
     return replace(state, turn=replace(turn, movement=movement))
 
 
@@ -157,7 +164,6 @@ def _hop(state: GameState, action: GameAction) -> GameState:
         )
     except MovementValidationError as exc:
         return _movement_failure(state, str(exc))
-
     return replace(state, turn=replace(turn, movement=movement))
 
 
@@ -167,7 +173,7 @@ def _begin_hopping_back(state: GameState) -> GameState:
     if turn.movement is None:
         raise InvalidTransitionError("hopping has not been initialized")
     try:
-        movement = begin_return(turn.movement, state.layout)
+        movement = begin_return(turn.movement)
     except MovementValidationError as exc:
         return _movement_failure(state, str(exc))
     return replace(state, phase=GamePhase.HOPPING_BACK, turn=replace(turn, movement=movement))
@@ -307,7 +313,7 @@ def transition(state: GameState, action: GameAction) -> TransitionResult:
         GameActionType.BEGIN_TURN: lambda: _begin_turn(state, action.player_id),
         GameActionType.THROW: lambda: _throw(state, action.house_id),
         GameActionType.RESOLVE_THROW: lambda: _resolve_throw(state, action),
-        GameActionType.BEGIN_HOPPING_OUT: lambda: _begin_hopping_out(state),
+        GameActionType.BEGIN_HOPPING_OUT: lambda: _begin_hopping_out(state, action.movement_path),
         GameActionType.HOP: lambda: _hop(state, action),
         GameActionType.BEGIN_HOPPING_BACK: lambda: _begin_hopping_back(state),
         GameActionType.PICKUP_STONE: lambda: _pickup_stone(state),
