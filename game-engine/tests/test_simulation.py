@@ -48,6 +48,13 @@ def test_rule_based_provider_completes_headless_game() -> None:
     assert result.action_counts["throw"] == 3
     assert result.turns == result.action_counts["begin_turn"] == 3
 
+def test_rule_based_ai_selects_the_authoritative_target() -> None:
+    result = simulate_game(make_layout(), player_count=2, seed=11)
+
+    assert result.completed is True
+    assert result.action_counts["throw"] == result.turns
+
+
 
 def test_simulation_is_reproducible_for_same_seed() -> None:
     factory = lambda _player_id, rng: RandomActionProvider(rng, error_rate=0.15)
