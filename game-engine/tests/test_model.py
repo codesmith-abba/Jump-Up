@@ -363,3 +363,116 @@ def test_transition_does_not_mutate_previous_state() -> None:
     assert initial.current_player_id is None
     assert started.phase is GamePhase.TURN_START
     assert started.current_player_id == "p1"
+
+
+@pytest.mark.parametrize("player_count", [2, 3, 4])
+def test_supported_player_counts_start_deterministically(player_count: int) -> None:
+    state = make_state(player_count)
+    started = transition(state, GameAction.start_game()).state
+    assert started.current_player_id == "p1"
+    assert started.phase is GamePhase.TURN_START
+    assert len(started.players) == player_count
+
+
+@pytest.mark.parametrize("player_count", [0, 1])
+def test_too_few_players_cannot_start(player_count: int) -> None:
+    state = make_state(player_count)
+    with pytest.raises(InvalidTransitionError, match="players"):
+        transition(state, GameAction.start_game())
+
+
+def test_more_than_four_players_are_rejected() -> None:
+    houses = tuple(
+        House(
+            id=f"h{i}", number=i, sequence_index=i - 1,
+            geometry=HouseGeometry(
+                boundary=(Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10), Point(0, 0)),
+                bounds=Bounds(0, 0, 10, 10),
+            ),
+        ) for i in range(1, 4)
+    )
+    layout = Layout(id="too-many", type=LayoutType.HEART, houses=houses)
+    players = tuple(Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i - 1) for i in range(1, 6))
+    stones = tuple(Stone(id=f"s{i}", owner_id=f"p{i}") for i in range(1, 6))
+    with pytest.raises(ValueError, match="maximum"):
+        GameState.initial(layout, players, stones)
+
+
+def test_invalid_actions_never_mutate_the_input_state() -> None:
+    state = make_state()
+    original = state
+    invalid_actions = (
+        GameAction.begin_turn("p1"), GameAction.throw("h1"), GameAction.resolve_throw(True),
+        GameAction.begin_hopping_out(("h2", "h3")), GameAction.hop("h2", Point(5, 5)),
+        GameAction.begin_hopping_back(), GameAction.pickup_stone(), GameAction.complete_house(),
+        GameAction.select_claim("h1", "facing"), GameAction.resolve_claim(True),
+        GameAction.next_house(), GameAction.end_turn(), GameAction.next_player(), GameAction.end_game(),
+    )
+    for action in invalid_actions:
+        with pytest.raises(InvalidTransitionError):
+            transition(state, action)
+        assert state == original
+
+
+def test_invalid_action_fuzzing_is_deterministic_and_state_safe() -> None:
+    import random
+    from jumpup.actions import GameActionType
+    rng = random.Random(20260922)
+    state = make_state()
+    original = state
+    for _ in range(500):
+        action_type = rng.choice(tuple(GameActionType))
+        if action_type is GameActionType.START_GAME:
+            continue
+        with pytest.raises(InvalidTransitionError):
+            transition(state, GameAction(action_type))
+        assert state == original
+
+
+def test_successful_transition_does_not_mutate_previous_nested_collections() -> None:
+    state = transition(make_state(), GameAction.start_game()).state
+    before_ownership = dict(state.ownership)
+    before_stones = tuple(state.stones)
+    next_state = transition(state, GameAction.begin_turn("p1")).state
+    assert state.ownership == before_ownership
+    assert state.stones == before_stones
+    assert state.phase is GamePhase.TURN_START
+    assert next_state.phase is GamePhase.THROW
+
+
+def test_turn_failure_is_terminal_for_that_turn_and_preserves_ownership() -> None:
+    state = transition(make_state(), GameAction.start_game()).state
+    state = transition(state, GameAction.begin_turn("p1")).state
+    state = transition(state, GameAction.throw("h1")).state
+    state = transition(state, GameAction.resolve_throw(False, "missed_target")).state
+    assert state.phase is GamePhase.TURN_END
+    assert state.ownership == {}
+    assert state.turn is not None and state.turn.failed is True
+    with pytest.raises(InvalidTransitionError):
+        transition(state, GameAction.throw("h1"))
+
+
+def test_two_player_round_transition_is_explicit() -> None:
+    state = transition(make_state(), GameAction.start_game()).state
+    for player_id in ("p1", "p2"):
+        state = transition(state, GameAction.begin_turn(player_id)).state
+        state = transition(state, GameAction.throw("h1")).state
+        state = transition(state, GameAction.resolve_throw(False, "missed_target")).state
+        state = transition(state, GameAction.end_turn()).state
+        state = transition(state, GameAction.next_player()).state
+    assert state.round.number == 2
+    assert state.round.completed_turns == 2
+    assert state.current_player_id == "p1"
+    assert state.phase is GamePhase.TURN_START
+
+
+def test_end_game_is_deterministic_without_override() -> None:
+    state = make_state()
+    state = GameState(**{**state.__dict__, "ownership": {"h1": "p2", "h2": "p1"}})
+    state = transition(state, GameAction.start_game()).state
+    first = transition(state, GameAction.end_game()).state
+    second = transition(state, GameAction.end_game()).state
+    assert first == second
+    assert first.phase is GamePhase.GAME_OVER
+    assert first.winner.player_id == "p1"
+    assert first.winner.is_final is True
