@@ -39,6 +39,7 @@ from .physics import (
 )
 from .simulation import (
     ActionProvider,
+    JumpUpAI,
     BatchResult,
     ClaimDecision,
     HopDecision,
@@ -56,6 +57,7 @@ from .transition import InvalidTransitionError, TransitionResult, transition
 __all__ = [
     "ActionProvider",
     "BatchResult",
+    "JumpUpAI",
     "Bounds",
     "ClaimDecision",
     "ClaimSelectionMode",
