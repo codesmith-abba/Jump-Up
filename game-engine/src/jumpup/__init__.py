@@ -52,10 +52,15 @@ from .simulation import (
     run_batch,
     simulate_game,
 )
+from .ai_environment import AIAction, AIActionType, AIObservation, AIStepResult, JumpUpAIEnvironment
 from .transition import InvalidTransitionError, TransitionResult, transition
 
 __all__ = [
     "ActionProvider",
+    "AIAction",
+    "AIActionType",
+    "AIObservation",
+    "AIStepResult",
     "BatchResult",
     "JumpUpAI",
     "Bounds",
@@ -72,6 +77,7 @@ __all__ = [
     "HouseGeometry",
     "HumanLikeActionProvider",
     "InvalidTransitionError",
+    "JumpUpAIEnvironment",
     "Layout",
     "LayoutDataError",
     "LayoutType",
