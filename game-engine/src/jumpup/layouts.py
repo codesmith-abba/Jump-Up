@@ -2,8 +2,6 @@
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
-
 from .geometry import Bounds, HouseGeometry, Point
 from .model import House, Layout, LayoutType
 
@@ -63,8 +61,12 @@ def _rect_cells(lines: list[str]) -> list[_Cell]:
 
     if len(lines) != 22:
         raise LayoutDataError("rectangle layout must contain exactly 22 rows")
-    if lines[3].count("#") != 40 or lines[9].count("#") != 40:
+    separator_rows = (3, 9, 15, 21)
+    if any(lines[row].count("#") != 40 for row in separator_rows):
         raise LayoutDataError("rectangle separators are malformed")
+    for row in (4, 10, 16):
+        if [index for index, char in enumerate(lines[row]) if char == "#"] != [0, 19, 39]:
+            raise LayoutDataError("rectangle vertical boundaries are malformed")
 
     # The first three rows form the legacy sloped entry/header. It is not a
     # separate playable house because it has no independent closed cell.
@@ -83,10 +85,21 @@ def _square_cells(lines: list[str]) -> list[_Cell]:
 
     if len(lines) != 25:
         raise LayoutDataError("square layout must contain exactly 25 rows")
-    if not lines[0].strip().startswith("########"):
-        raise LayoutDataError("square layout header is malformed")
-    if lines[24].strip() != "########################":
-        raise LayoutDataError("square layout footer is malformed")
+    expected_rows = {
+        0: "            ########",
+        4: "            ########",
+        8: "            ########",
+        12: "    ########################",
+        16: "    ########################",
+        20: "    ########################  ",
+        24: "    ########################",
+    }
+    for row, expected in expected_rows.items():
+        if lines[row] != expected:
+            raise LayoutDataError(f"square boundary row {row} is malformed")
+    for row in (13, 14, 15, 21, 22, 23):
+        if [index for index, char in enumerate(lines[row]) if char == "#"] != [4, 16, 27]:
+            raise LayoutDataError(f"square vertical boundary row {row} is malformed")
 
     # Three vertically stacked single cells, followed by two rows of two cells.
     return [
@@ -104,6 +117,8 @@ def _heart_house_ranges(lines: list[str]) -> list[tuple[int, int]]:
     starts = [index for index, line in enumerate(lines) if line in {" ##    ##", "##  ##  ##"}]
     if len(starts) != 8:
         raise LayoutDataError(f"heart layout must contain 8 houses, found {len(starts)}")
+    if lines[-1] != "    ##":
+        raise LayoutDataError("heart layout footer is malformed")
     ranges = []
     for index, start in enumerate(starts):
         end = starts[index + 1] - 1 if index + 1 < len(starts) else len(lines) - 1
