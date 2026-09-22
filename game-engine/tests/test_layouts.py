@@ -5,7 +5,6 @@ import pytest
 from jumpup.geometry import Bounds, HouseGeometry, Point
 from jumpup.layouts import LayoutDataError, load_legacy_layout
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
