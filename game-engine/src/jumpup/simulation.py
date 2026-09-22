@@ -52,8 +52,10 @@ class ClaimDecision:
     failure_reason: str | None = None
 
 
-class ActionProvider(Protocol):
-    """Interface implemented by human, random, rule-based, and trained AI agents."""
+class JumpUpAI(Protocol):
+    """AI interface for selecting decisions from authoritative game state."""
+
+    def choose_target(self, state: GameState) -> str: ...
 
     def choose_throw(self, state: GameState) -> ThrowDecision: ...
 
@@ -62,6 +64,10 @@ class ActionProvider(Protocol):
     def choose_hop(self, state: GameState, house_id: str) -> HopDecision: ...
 
     def choose_claim(self, state: GameState) -> ClaimDecision: ...
+
+
+# Backward-compatible name used by the headless simulator.
+ActionProvider = JumpUpAI
 
 
 @dataclass(frozen=True)
@@ -190,10 +196,15 @@ def _make_players(player_count: int) -> tuple[Player, ...]:
 
 
 class RuleBasedActionProvider:
-    """Always chooses legal, low-risk actions using house geometry."""
+    """Deterministic baseline AI using simple legal-action heuristics."""
+
+    def choose_target(self, state: GameState) -> str:
+        if state.turn is None:
+            raise ValueError("target selection requires an active turn")
+        return state.turn.target_house_id
 
     def choose_throw(self, state: GameState) -> ThrowDecision:
-        target_id = state.turn.target_house_id  # type: ignore[union-attr]
+        target_id = self.choose_target(state)
         target = next(h for h in state.layout.houses if h.id == target_id)
         return ThrowDecision(position=_center(target))
 
@@ -209,7 +220,7 @@ class RuleBasedActionProvider:
 
 
 class RandomActionProvider:
-    """Seeded stochastic provider suitable for baseline simulation experiments."""
+    """Seeded stochastic AI that deliberately explores imperfect legal play."""
 
     def __init__(self, rng: random.Random, error_rate: float = 0.25) -> None:
         if not 0.0 <= error_rate <= 1.0:
@@ -217,10 +228,13 @@ class RandomActionProvider:
         self.rng = rng
         self.error_rate = error_rate
 
+    def choose_target(self, state: GameState) -> str:
+        if state.turn is None:
+            raise ValueError("target selection requires an active turn")
+        return state.turn.target_house_id
+
     def choose_throw(self, state: GameState) -> ThrowDecision:
-        target = next(
-            h for h in state.layout.houses if h.id == state.turn.target_house_id  # type: ignore[union-attr]
-        )
+        target = next(h for h in state.layout.houses if h.id == self.choose_target(state))
         if self.rng.random() < self.error_rate:
             bounds = target.geometry.bounds
             return ThrowDecision(
@@ -264,7 +278,7 @@ class RandomActionProvider:
 
 
 class HumanLikeActionProvider(RandomActionProvider):
-    """A conservative stochastic provider approximating imperfect human play."""
+    """A conservative stochastic AI approximating imperfect human play."""
 
     def __init__(self, rng: random.Random, error_rate: float = 0.08) -> None:
         super().__init__(rng, error_rate=error_rate)
@@ -355,8 +369,9 @@ def simulate_game(
             continue
 
         if state.phase is GamePhase.THROW:
+            target = provider.choose_target(state)
             decision = provider.choose_throw(state)
-            state = _apply(state, GameAction.throw(state.turn.target_house_id))  # type: ignore[union-attr]
+            state = _apply(state, GameAction.throw(target))
             action_counts["throw"] += 1
             success, reason, duration = _resolve_throw(state, decision)
             simulated_duration += duration
