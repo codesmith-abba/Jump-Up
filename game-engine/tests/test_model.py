@@ -384,15 +384,21 @@ def test_too_few_players_cannot_start(player_count: int) -> None:
 def test_more_than_four_players_are_rejected() -> None:
     houses = tuple(
         House(
-            id=f"h{i}", number=i, sequence_index=i - 1,
+            id=f"h{i}",
+            number=i,
+            sequence_index=i - 1,
             geometry=HouseGeometry(
                 boundary=(Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10), Point(0, 0)),
                 bounds=Bounds(0, 0, 10, 10),
             ),
-        ) for i in range(1, 4)
+        )
+        for i in range(1, 4)
     )
     layout = Layout(id="too-many", type=LayoutType.HEART, houses=houses)
-    players = tuple(Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i - 1) for i in range(1, 6))
+    players = tuple(
+        Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i - 1)
+        for i in range(1, 6)
+    )
     stones = tuple(Stone(id=f"s{i}", owner_id=f"p{i}") for i in range(1, 6))
     with pytest.raises(ValueError, match="maximum"):
         GameState.initial(layout, players, stones)
@@ -402,11 +408,20 @@ def test_invalid_actions_never_mutate_the_input_state() -> None:
     state = make_state()
     original = state
     invalid_actions = (
-        GameAction.begin_turn("p1"), GameAction.throw("h1"), GameAction.resolve_throw(True),
-        GameAction.begin_hopping_out(("h2", "h3")), GameAction.hop("h2", Point(5, 5)),
-        GameAction.begin_hopping_back(), GameAction.pickup_stone(), GameAction.complete_house(),
-        GameAction.select_claim("h1", "facing"), GameAction.resolve_claim(True),
-        GameAction.next_house(), GameAction.end_turn(), GameAction.next_player(), GameAction.end_game(),
+        GameAction.begin_turn("p1"),
+        GameAction.throw("h1"),
+        GameAction.resolve_throw(True),
+        GameAction.begin_hopping_out(("h2", "h3")),
+        GameAction.hop("h2", Point(5, 5)),
+        GameAction.begin_hopping_back(),
+        GameAction.pickup_stone(),
+        GameAction.complete_house(),
+        GameAction.select_claim("h1", "facing"),
+        GameAction.resolve_claim(True),
+        GameAction.next_house(),
+        GameAction.end_turn(),
+        GameAction.next_player(),
+        GameAction.end_game(),
     )
     for action in invalid_actions:
         with pytest.raises(InvalidTransitionError):
@@ -416,7 +431,9 @@ def test_invalid_actions_never_mutate_the_input_state() -> None:
 
 def test_invalid_action_fuzzing_is_deterministic_and_state_safe() -> None:
     import random
+
     from jumpup.actions import GameActionType
+
     rng = random.Random(20260922)
     state = make_state()
     original = state
