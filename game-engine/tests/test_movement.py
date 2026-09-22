@@ -163,7 +163,7 @@ def test_return_sequence_ends_at_stone_house() -> None:
         state = hop(state, layout, house_id, Point(5, 5))
     state = begin_return(state)
 
-    for house_id in ("h4", "h3", "h1", "h2"):
+    for house_id in ("h3", "h1", "h2"):
         state = hop(state, layout, house_id, Point(5, 5))
 
     assert state.direction is MovementDirection.RETURN
@@ -188,7 +188,6 @@ def test_pickup_requires_return_one_leg_at_target() -> None:
     state = begin_return(state)
 
     assert can_pickup_stone(state) is False
-    state = hop(state, layout, "h4", Point(5, 5))
     state = hop(state, layout, "h3", Point(5, 5))
     state = hop(state, layout, "h1", Point(5, 5))
     state = hop(state, layout, "h2", Point(5, 5))
