@@ -3,7 +3,7 @@
 from .actions import GameAction, GameActionType
 from .geometry import Bounds, HouseGeometry, Point
 from .layouts import LayoutDataError, load_legacy_layout, load_repository_layouts
-from .model import (
+from .physics import (\n    PhysicsConfig,\n    StoneInitialState,\n    StonePhysicsState,\n    ThrowResult,\n    ThrowStatus,\n    simulate_throw,\n)\nfrom .model import (
     ClaimState,
     GameConfig,
     GamePhase,
@@ -35,12 +35,18 @@ __all__ = [
     "LayoutType",
     "Player",
     "Point",
+    "PhysicsConfig",
     "RoundState",
     "Stone",
+    "StoneInitialState",
+    "StonePhysicsState",
+    "ThrowResult",
+    "ThrowStatus",
     "TransitionResult",
     "TurnState",
     "WinnerState",
     "load_legacy_layout",
     "load_repository_layouts",
+    "simulate_throw",
     "transition",
 ]
