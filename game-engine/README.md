@@ -121,3 +121,8 @@ Phase 9 deliberately does not train a machine-learning model. It establishes the
 ```text
 GameState → ActionProvider → transition() → SimulationResult → batch statistics
 ```
+
+
+## Phase 11 — AI training environment
+
+The formal learning boundary is implemented in jumpup.ai_environment and documented in docs/AI_SPEC.md.
