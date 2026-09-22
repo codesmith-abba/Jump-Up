@@ -34,6 +34,7 @@ class GameAction:
     failure_reason: str | None = None
     position: Point | None = None
     feet: int = 1
+    movement_path: tuple[str, ...] | None = None
 
     @classmethod
     def start_game(cls) -> "GameAction":
@@ -52,8 +53,8 @@ class GameAction:
         return cls(GameActionType.RESOLVE_THROW, success=success, failure_reason=failure_reason)
 
     @classmethod
-    def begin_hopping_out(cls) -> "GameAction":
-        return cls(GameActionType.BEGIN_HOPPING_OUT)
+    def begin_hopping_out(cls, movement_path: tuple[str, ...]) -> "GameAction":
+        return cls(GameActionType.BEGIN_HOPPING_OUT, movement_path=movement_path)
 
     @classmethod
     def hop(cls, house_id: str, position: Point, feet: int = 1) -> "GameAction":
