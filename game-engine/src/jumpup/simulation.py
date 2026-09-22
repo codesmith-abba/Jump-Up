@@ -365,12 +365,12 @@ def simulate_game(
             action_counts["resolve_throw"] += 1
             continue
 
-        if state.phase is GamePhase.HOPPING_OUT:
-            target = state.turn.target_house_id  # type: ignore[union-attr]
-            # The current authoritative loop only permits claiming the
-            # just-completed house. If another player already owns this target,
-            # deliberately submit an invalid path so the engine records a
-            # failed movement rather than bypassing authoritative state.
+        if state.phase is GamePhase.HOPPING_OUT and state.turn is not None and state.turn.movement is None:
+            target = state.turn.target_house_id
+            # If another player already owns the target, the current turn may
+            # still traverse the board, but this target cannot be claimed.
+            # Submit an invalid outbound path so the authoritative engine ends
+            # the turn rather than inventing a special-case transition.
             if target in state.ownership and state.ownership[target] != current_player:
                 path = (target,)
             else:
@@ -395,7 +395,20 @@ def simulate_game(
                 action_counts["begin_hopping_back"] += 1
                 continue
             current = movement.current_house_id
-            expected = sequence[0] if current is None else sequence[sequence.index(current) + 1]
+            if current is None:
+                expected = sequence[0]
+            else:
+                try:
+                    current_index = sequence.index(current)
+                except ValueError as exc:
+                    raise RuntimeError(
+                        f"movement current house {current!r} is not in the active sequence"
+                    ) from exc
+                if current_index + 1 >= len(sequence):
+                    raise RuntimeError(
+                        f"movement has no next house after {current!r} in {movement.direction.value} direction"
+                    )
+                expected = sequence[current_index + 1]
             decision = provider.choose_hop(state, expected)
             state = _apply(
                 state,
