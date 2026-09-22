@@ -4,6 +4,7 @@ from .actions import GameAction, GameActionType
 from .geometry import Bounds, HouseGeometry, Point
 from .layouts import LayoutDataError, load_legacy_layout, load_repository_layouts
 from .model import (
+    ClaimSelectionMode,
     ClaimState,
     GameConfig,
     GamePhase,
@@ -40,6 +41,7 @@ from .transition import InvalidTransitionError, TransitionResult, transition
 
 __all__ = [
     "Bounds",
+    "ClaimSelectionMode",
     "ClaimState",
     "GameAction",
     "GameActionType",
