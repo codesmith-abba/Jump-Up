@@ -119,5 +119,11 @@ class JumpUpAIEnvironment:
         self.state=s; reward=1.0 if len(s.ownership)>len(before.ownership) else 0.0
         if s.turn and s.turn.failed and not(before.turn.failed if before.turn else False):reward=-1.0
         self._auto(); done=self.state.phase is GamePhase.GAME_OVER
-        if done:reward+=10.0 if self.state.winner.player_id==self.agent_player_id else (2.0 if self.agent_player_id in self.state.winner.tied_player_ids else -10.0)
+        if done:
+            if self.state.winner.player_id == self.agent_player_id:
+                reward += 10.0
+            elif self.state.winner.tied_player_ids:
+                reward += 2.0 if self.agent_player_id in self.state.winner.tied_player_ids else -2.0
+            else:
+                reward -= 10.0
         return AIStepResult(self.observe(),reward,done,{"phase_before":before.phase.value,"phase_after":self.state.phase.value})
