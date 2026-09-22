@@ -59,6 +59,8 @@ class JumpUpAI(Protocol):
 
     def choose_throw(self, state: GameState) -> ThrowDecision: ...
 
+    def choose_claim_house(self, state: GameState) -> str: ...
+
     def choose_movement_path(self, state: GameState) -> tuple[str, ...]: ...
 
     def choose_hop(self, state: GameState, house_id: str) -> HopDecision: ...
@@ -208,6 +210,14 @@ class RuleBasedActionProvider:
         target = next(h for h in state.layout.houses if h.id == target_id)
         return ThrowDecision(position=_center(target))
 
+    def choose_claim_house(self, state: GameState) -> str:
+        if state.turn is None or state.turn.completed_house_id is None:
+            raise ValueError("claim selection requires a completed house")
+        house_id = state.turn.completed_house_id
+        if house_id in state.ownership:
+            raise ValueError("baseline AI will not select an already-owned house")
+        return house_id
+
     def choose_movement_path(self, state: GameState) -> tuple[str, ...]:
         target = state.turn.target_house_id  # type: ignore[union-attr]
         return tuple(h.id for h in state.layout.houses if h.id != target)
@@ -244,6 +254,14 @@ class RandomActionProvider:
                 )
             )
         return ThrowDecision(position=_center(target))
+
+    def choose_claim_house(self, state: GameState) -> str:
+        if state.turn is None or state.turn.completed_house_id is None:
+            raise ValueError("claim selection requires a completed house")
+        house_id = state.turn.completed_house_id
+        if house_id in state.ownership:
+            raise ValueError("random AI will not select an already-owned house")
+        return house_id
 
     def choose_movement_path(self, state: GameState) -> tuple[str, ...]:
         target = state.turn.target_house_id  # type: ignore[union-attr]
@@ -452,7 +470,7 @@ def simulate_game(
             continue
 
         if state.phase is GamePhase.CLAIM_SELECTION:
-            completed = state.turn.completed_house_id  # type: ignore[union-attr]
+            completed = provider.choose_claim_house(state)
             decision = provider.choose_claim(state)
             state = _apply(state, GameAction.select_claim(completed, decision.selection_mode))
             action_counts["select_claim"] += 1
