@@ -69,12 +69,12 @@ def _rect_cells(lines: list[str]) -> list[_Cell]:
     # The first three rows form the legacy sloped entry/header. It is not a
     # separate playable house because it has no independent closed cell.
     return [
-        _Cell(x0=0, y0=3, x1=18, y1=9),
-        _Cell(x0=18, y0=3, x1=40, y1=9),
-        _Cell(x0=0, y0=9, x1=18, y1=15),
-        _Cell(x0=18, y0=9, x1=40, y1=15),
-        _Cell(x0=0, y0=15, x1=18, y1=21),
-        _Cell(x0=18, y0=15, x1=40, y1=21),
+        _Cell(x0=0, y0=3, x1=19, y1=9),
+        _Cell(x0=19, y0=3, x1=39, y1=9),
+        _Cell(x0=0, y0=9, x1=19, y1=15),
+        _Cell(x0=19, y0=9, x1=39, y1=15),
+        _Cell(x0=0, y0=15, x1=19, y1=21),
+        _Cell(x0=19, y0=15, x1=39, y1=21),
     ]
 
 
@@ -90,13 +90,13 @@ def _square_cells(lines: list[str]) -> list[_Cell]:
 
     # Three vertically stacked single cells, followed by two rows of two cells.
     return [
-        _Cell(12, 0, 20, 4),
-        _Cell(12, 4, 20, 8),
-        _Cell(12, 8, 20, 12),
+        _Cell(12, 0, 19, 4),
+        _Cell(12, 4, 19, 8),
+        _Cell(12, 8, 19, 12),
         _Cell(4, 12, 16, 16),
-        _Cell(16, 12, 28, 16),
+        _Cell(16, 12, 27, 16),
         _Cell(4, 20, 16, 24),
-        _Cell(16, 20, 28, 24),
+        _Cell(16, 20, 27, 24),
     ]
 
 
