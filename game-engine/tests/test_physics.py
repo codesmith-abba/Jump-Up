@@ -194,3 +194,64 @@ def test_physics_config_rejects_invalid_parameters() -> None:
             pass
         else:
             raise AssertionError(f"expected ValueError for {kwargs}")
+
+
+from jumpup.physics import point_on_boundary
+
+
+def test_throw_is_deterministic_for_identical_inputs() -> None:
+    initial = StoneInitialState(
+        position=Point(5, 5),
+        height=2,
+        velocity_x=0,
+        velocity_y=0,
+        velocity_z=4,
+    )
+    first = simulate_throw(
+        initial,
+        target_house_id="h1",
+        target_house=TARGET,
+        valid_area=TARGET.bounds,
+    )
+    second = simulate_throw(
+        initial,
+        target_house_id="h1",
+        target_house=TARGET,
+        valid_area=TARGET.bounds,
+    )
+    assert first == second
+
+
+@pytest.mark.parametrize(
+    ("position", "expected"),
+    [
+        (Point(0, 5), True),
+        (Point(10, 5), True),
+        (Point(5, 0), True),
+        (Point(5, 10), True),
+        (Point(5, 5), False),
+    ],
+)
+def test_outer_boundary_contact_is_classified_exactly(position: Point, expected: bool) -> None:
+    assert point_on_boundary(position, TARGET) is expected
+
+
+def test_valid_area_collision_bounces_deterministically() -> None:
+    initial = StoneInitialState(
+        position=Point(15, 15),
+        height=1,
+        velocity_x=0,
+        velocity_y=0,
+        velocity_z=0,
+    )
+    config = PhysicsConfig(max_bounces=3, rest_vertical_speed=0.0)
+    result = simulate_throw(
+        initial,
+        target_house_id="h1",
+        target_house=TARGET,
+        valid_area=VALID_AREA,
+        config=config,
+    )
+    assert result.collision_count >= 1
+    assert result.state.bounces <= config.max_bounces
+    assert result.state.resting is True
