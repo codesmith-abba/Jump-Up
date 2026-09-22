@@ -1,4 +1,4 @@
-"""Deterministic foundational state transitions for Jump-Up."""
+"""Deterministic authoritative state transitions for Jump-Up."""
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -11,6 +11,13 @@ from .model import (
     RoundState,
     TurnState,
     WinnerState,
+)
+from .movement import (
+    MovementValidationError,
+    begin_hopping,
+    begin_return,
+    can_pickup_stone,
+    hop,
 )
 
 
@@ -117,19 +124,64 @@ def _resolve_throw(state: GameState, action: GameAction) -> GameState:
 
 def _begin_hopping_out(state: GameState) -> GameState:
     _require_phase(state, GamePhase.HOPPING_OUT)
-    return replace(state, phase=GamePhase.HOPPING_BACK)
+    turn = _current_turn(state)
+    movement = begin_hopping(state.layout, turn.target_house_id)
+    return replace(state, turn=replace(turn, movement=movement))
+
+
+def _movement_failure(state: GameState, reason: str) -> GameState:
+    turn = _current_turn(state)
+    return replace(
+        state,
+        phase=GamePhase.TURN_END,
+        turn=replace(turn, failed=True, failure_reason=reason),
+    )
+
+
+def _hop(state: GameState, action: GameAction) -> GameState:
+    _require_phase(state, GamePhase.HOPPING_OUT, GamePhase.HOPPING_BACK)
+    turn = _current_turn(state)
+    if turn.movement is None:
+        raise InvalidTransitionError("hopping has not been initialized")
+    if action.house_id is None or action.position is None:
+        raise InvalidTransitionError("hop requires destination house and position")
+    try:
+        movement = hop(
+            turn.movement,
+            state.layout,
+            action.house_id,
+            action.position,
+            feet=action.feet,
+            ownership=state.ownership,
+            player_id=turn.player_id,
+        )
+    except MovementValidationError as exc:
+        return _movement_failure(state, str(exc))
+
+    return replace(state, turn=replace(turn, movement=movement))
 
 
 def _begin_hopping_back(state: GameState) -> GameState:
-    _require_phase(state, GamePhase.HOPPING_BACK)
-    return replace(state, phase=GamePhase.STONE_PICKUP)
+    _require_phase(state, GamePhase.HOPPING_OUT)
+    turn = _current_turn(state)
+    if turn.movement is None:
+        raise InvalidTransitionError("hopping has not been initialized")
+    try:
+        movement = begin_return(turn.movement, state.layout)
+    except MovementValidationError as exc:
+        return _movement_failure(state, str(exc))
+    return replace(state, phase=GamePhase.HOPPING_BACK, turn=replace(turn, movement=movement))
 
 
 def _pickup_stone(state: GameState) -> GameState:
-    _require_phase(state, GamePhase.STONE_PICKUP)
+    _require_phase(state, GamePhase.STONE_PICKUP, GamePhase.HOPPING_BACK)
     turn = _current_turn(state)
+    if turn.movement is None or not can_pickup_stone(turn.movement):
+        return _movement_failure(state, "stone_pickup_requires_one_leg_return_to_target")
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
+        replace(stone, location_house_id=None, in_hand=True)
+        if stone.id == turn.stone_id
+        else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
@@ -196,6 +248,7 @@ def _next_house(state: GameState) -> GameState:
         current_house_id=next_house,
         target_house_id=next_house,
         completed_house_id=None,
+        movement=None,
     )
     return replace(state, phase=GamePhase.TURN_START, turn=updated_turn)
 
@@ -255,6 +308,7 @@ def transition(state: GameState, action: GameAction) -> TransitionResult:
         GameActionType.THROW: lambda: _throw(state, action.house_id),
         GameActionType.RESOLVE_THROW: lambda: _resolve_throw(state, action),
         GameActionType.BEGIN_HOPPING_OUT: lambda: _begin_hopping_out(state),
+        GameActionType.HOP: lambda: _hop(state, action),
         GameActionType.BEGIN_HOPPING_BACK: lambda: _begin_hopping_back(state),
         GameActionType.PICKUP_STONE: lambda: _pickup_stone(state),
         GameActionType.COMPLETE_HOUSE: lambda: _complete_house(state),
