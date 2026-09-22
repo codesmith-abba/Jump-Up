@@ -1,8 +1,8 @@
 """Deterministic, renderer-independent stone throw physics for Jump-Up."""
 
+import math
 from dataclasses import dataclass
 from enum import Enum
-import math
 
 from .geometry import Bounds, HouseGeometry, Point
 
