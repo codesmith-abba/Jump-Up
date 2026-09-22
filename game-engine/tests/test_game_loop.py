@@ -1,3 +1,5 @@
+import pytest
+
 from jumpup import (
     Bounds,
     GameAction,
@@ -128,3 +130,54 @@ def test_completed_turns_advance_round_after_last_player() -> None:
     assert state.round.number == 2
     assert state.current_player_id == "p1"
     assert state.phase is GamePhase.TURN_START
+
+
+@pytest.mark.parametrize("layout_name", ["heart", "square", "rect"])
+def test_complete_game_on_each_production_layout(layout_name: str) -> None:
+    from pathlib import Path
+
+    from jumpup.layouts import load_legacy_layout
+
+    repo_root = Path(__file__).resolve().parents[2]
+    layout = load_legacy_layout(repo_root / "Python (Pygame)" / "houses" / f"{layout_name}.txt")
+    state = GameState.initial(
+        layout,
+        (
+            Player(id="p1", name="Player 1", stone_id="s1", order=0),
+            Player(id="p2", name="Player 2", stone_id="s2", order=1),
+        ),
+        (Stone(id="s1", owner_id="p1"), Stone(id="s2", owner_id="p2")),
+        GameConfig(),
+    )
+    state = transition(state, GameAction.start_game()).state
+
+    for index, target in enumerate(layout.houses):
+        state = transition(state, GameAction.begin_turn(state.current_player_id or "p1")).state
+        path = tuple(house.id for house in layout.houses if house.id != target.id)
+        state = transition(state, GameAction.throw(target.id)).state
+        state = transition(state, GameAction.resolve_throw(True)).state
+        state = transition(state, GameAction.begin_hopping_out(path)).state
+
+        for house_id in path:
+            house = next(house for house in layout.houses if house.id == house_id)
+            state = transition(state, GameAction.hop(house_id, house.geometry.center)).state
+
+        state = transition(state, GameAction.begin_hopping_back()).state
+        for house_id in reversed(path):
+            house = next(house for house in layout.houses if house.id == house_id)
+            state = transition(state, GameAction.hop(house_id, house.geometry.center)).state
+
+        state = transition(state, GameAction.hop(target.id, target.geometry.center)).state
+        state = transition(state, GameAction.pickup_stone()).state
+        state = transition(state, GameAction.complete_house()).state
+        state = transition(state, GameAction.select_claim(target.id, "facing")).state
+        state = transition(state, GameAction.resolve_claim(True)).state
+
+        if index < len(layout.houses) - 1:
+            state = transition(state, GameAction.next_house()).state
+
+    assert state.phase is GamePhase.GAME_OVER
+    assert state.ownership == {house.id: "p1" for house in layout.houses}
+    assert state.scores == {"p1": len(layout.houses), "p2": 0}
+    assert state.winner.player_id == "p1"
+    assert state.winner.is_final is True
