@@ -213,6 +213,16 @@ def _pickup_stone(state: GameState) -> GameState:
 def _complete_house(state: GameState) -> GameState:
     _require_phase(state, GamePhase.HOUSE_COMPLETED)
     turn = _current_turn(state)
+    if turn.current_house_id in state.ownership:
+        # A player still traverses houses that another player has claimed,
+        # but an already-owned house cannot enter claim selection. Continue
+        # directly to the next house so multi-player games cannot get stuck
+        # retrying an already-owned target forever.
+        return replace(
+            state,
+            phase=GamePhase.NEXT_HOUSE,
+            turn=replace(turn, completed_house_id=None),
+        )
     return replace(
         state,
         phase=GamePhase.CLAIM_SELECTION,
