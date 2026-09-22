@@ -1,6 +1,5 @@
 from jumpup import (
     Bounds,
-    GameState,
     House,
     Layout,
     LayoutType,
