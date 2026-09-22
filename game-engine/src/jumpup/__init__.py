@@ -29,7 +29,7 @@ from .movement import (
     hop,
     validate_movement_path,
 )
-from .physics import (
+from .simulation import (\n    ActionProvider,\n    BatchResult,\n    ClaimDecision,\n    HopDecision,\n    HumanLikeActionProvider,\n    RandomActionProvider,\n    RuleBasedActionProvider,\n    SimulationResult,\n    ThrowDecision,\n    benchmark,\n    run_batch,\n    simulate_game,\n)\nfrom .physics import (
     PhysicsConfig,
     StoneInitialState,
     StonePhysicsState,
