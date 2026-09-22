@@ -2,10 +2,13 @@
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from .geometry import Point
-from .model import Layout
 from .physics import point_inside_strict, point_on_boundary
+
+if TYPE_CHECKING:
+    from .model import Layout
 
 
 class MovementDirection(str, Enum):
@@ -43,22 +46,20 @@ class MovementState:
         return self.mode is MovementMode.RESTING
 
 
-def outbound_sequence(layout: Layout, target_house_id: str) -> tuple[str, ...]:
+def outbound_sequence(layout: "Layout", target_house_id: str) -> tuple[str, ...]:
     """Return the required outbound houses, excluding the stone house."""
     if not layout.contains(target_house_id):
         raise MovementValidationError("target house does not exist in layout")
-    return tuple(
-        house.id for house in layout.houses if house.id != target_house_id
-    )
+    return tuple(house.id for house in layout.houses if house.id != target_house_id)
 
 
-def return_sequence(layout: Layout, target_house_id: str) -> tuple[str, ...]:
+def return_sequence(layout: "Layout", target_house_id: str) -> tuple[str, ...]:
     """Return the required return houses, ending at the stone house."""
     outbound = outbound_sequence(layout, target_house_id)
     return tuple(reversed(outbound)) + (target_house_id,)
 
 
-def begin_hopping(layout: Layout, target_house_id: str) -> MovementState:
+def begin_hopping(layout: "Layout", target_house_id: str) -> MovementState:
     """Start the one-leg outbound sequence without inventing a physical start point."""
     if not layout.contains(target_house_id):
         raise MovementValidationError("target house does not exist in layout")
@@ -72,7 +73,7 @@ def begin_hopping(layout: Layout, target_house_id: str) -> MovementState:
     )
 
 
-def _next_expected_house(state: MovementState, layout: Layout) -> str | None:
+def _next_expected_house(state: MovementState, layout: "Layout") -> str | None:
     sequence = (
         outbound_sequence(layout, state.target_house_id)
         if state.direction is MovementDirection.OUTBOUND
@@ -85,15 +86,13 @@ def _next_expected_house(state: MovementState, layout: Layout) -> str | None:
     try:
         index = sequence.index(state.current_house_id)
     except ValueError as exc:
-        raise MovementValidationError("current house is not valid for movement direction") from exc
+        raise MovementValidationError(
+            "current house is not valid for movement direction"
+        ) from exc
     return sequence[index + 1] if index + 1 < len(sequence) else None
 
 
-def _validate_destination(
-    layout: Layout,
-    house_id: str,
-    position: Point,
-) -> None:
+def _validate_destination(layout: "Layout", house_id: str, position: Point) -> None:
     if not layout.contains(house_id):
         raise MovementValidationError("destination house does not exist")
     house = next(house for house in layout.houses if house.id == house_id)
@@ -105,7 +104,7 @@ def _validate_destination(
 
 def hop(
     state: MovementState,
-    layout: Layout,
+    layout: "Layout",
     destination_house_id: str,
     position: Point,
     *,
@@ -113,12 +112,7 @@ def hop(
     ownership: dict[str, str] | None = None,
     player_id: str | None = None,
 ) -> MovementState:
-    """Validate and apply one logical hop/landing.
-
-    A normal landing uses one foot. Both feet are permitted only when the
-    destination house is owned by the active player. The returned state is
-    independent of rendering or animation timing.
-    """
+    """Validate and apply one logical hop/landing."""
     if not state.hopping:
         raise MovementValidationError("player is not currently hopping")
     if feet not in (1, 2):
@@ -133,8 +127,6 @@ def hop(
         raise MovementValidationError(
             f"invalid movement: expected house {expected}, got {destination_house_id}"
         )
-    if state.direction is MovementDirection.OUTBOUND and destination_house_id == state.target_house_id:
-        raise MovementValidationError("stone house must be skipped on outbound movement")
 
     _validate_destination(layout, destination_house_id, position)
 
@@ -150,29 +142,19 @@ def hop(
     )
 
 
-def begin_return(state: MovementState, layout: Layout) -> MovementState:
+def begin_return(state: MovementState, layout: "Layout") -> MovementState:
     """Switch from the completed outbound traversal to the return traversal."""
     if state.direction is not MovementDirection.OUTBOUND:
         raise MovementValidationError("player is not in outbound movement")
     required = outbound_sequence(layout, state.target_house_id)
     if required and state.current_house_id != required[-1]:
         raise MovementValidationError("outbound movement is not complete")
-    if not required:
-        return MovementState(
-            direction=MovementDirection.RETURN,
-            mode=MovementMode.HOPPING,
-            one_leg=True,
-            current_house_id=None,
-            position=None,
-            target_house_id=state.target_house_id,
-            visited_house_ids=state.visited_house_ids,
-        )
     return MovementState(
         direction=MovementDirection.RETURN,
         mode=MovementMode.HOPPING,
         one_leg=True,
-        current_house_id=state.current_house_id,
-        position=state.position,
+        current_house_id=state.current_house_id if required else None,
+        position=state.position if required else None,
         target_house_id=state.target_house_id,
         visited_house_ids=state.visited_house_ids,
     )
