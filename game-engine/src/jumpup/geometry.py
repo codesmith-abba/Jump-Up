@@ -44,8 +44,10 @@ class HouseGeometry:
     bounds: Bounds
 
     def __post_init__(self) -> None:
-        if len(self.boundary) < 3:
-            raise ValueError("house boundary must contain at least three points")
+        if len(self.boundary) < 4:
+            raise ValueError("house boundary must contain at least four points")
+        if len(set(self.boundary[:-1])) < 3:
+            raise ValueError("house boundary must contain at least three unique vertices")
         if self.boundary[0] != self.boundary[-1]:
             raise ValueError("house boundary must be closed")
         if any(
