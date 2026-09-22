@@ -22,6 +22,53 @@ The package has no React Native, Expo, Pygame, AI, or UI dependency.
 Consumers should treat GameState as authoritative and use transition(state, action) rather than mutating state directly.
 
 
+## Phase 10 — First AI opponent
+
+The first AI is a rule-based baseline built directly on the authoritative game engine.
+
+### AI interface
+
+JumpUpAI receives the current GameState and selects:
+
+- target house;
+- throw position;
+- movement path;
+- hop landing and foot count;
+- claim selection mode.
+
+The AI never mutates GameState and never resolves engine outcomes itself. Every selected action is passed to transition() by the simulator, which remains authoritative.
+
+### Baseline strategy
+
+RuleBasedActionProvider uses deterministic, low-risk heuristics:
+
+- select the target already assigned by the current turn;
+- throw at the target house center;
+- traverse every required house except the target;
+- land at house centers;
+- use one foot on the target during return so the stone can be picked up;
+- use two feet on houses already owned by the current player where the movement rules allow it;
+- select a facing claim;
+- let the engine determine whether movement, throw, pickup, or claim resolution succeeds.
+
+RandomActionProvider provides the randomized mode. It uses a seeded RNG to introduce controlled throw, movement, hop, and claim imperfections while using the same AI interface.
+
+### Evaluation
+
+Deterministic baseline:
+
+```bash
+jumpup-sim --layout "../Python (Pygame)/houses/heart.txt" --players 2 --games 10 --seed 42 --provider rule
+```
+
+Randomized baseline:
+
+```bash
+jumpup-sim --layout "../Python (Pygame)/houses/heart.txt" --players 2 --games 100 --seed 42 --provider random
+```
+
+The correctness property is that AI decisions are proposals only. transition() remains the only component that changes authoritative game state.
+
 ## Phase 9 — Headless simulation
 
 The `jumpup.simulation` module runs games directly against the authoritative `transition()` engine without React Native, Expo, Pygame, rendering, UI input, animation, or ML frameworks.
