@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 
 from .actions import GameAction, GameActionType
 from .model import (
+    ClaimSelectionMode,
     ClaimState,
     GamePhase,
     GameState,
@@ -12,13 +13,7 @@ from .model import (
     TurnState,
     WinnerState,
 )
-from .movement import (
-    MovementValidationError,
-    begin_hopping,
-    begin_return,
-    can_pickup_stone,
-    hop,
-)
+from .movement import MovementValidationError, begin_hopping, begin_return, can_pickup_stone, hop
 
 
 class InvalidTransitionError(ValueError):
@@ -126,11 +121,7 @@ def _begin_hopping_out(state: GameState, movement_path: tuple[str, ...] | None) 
         )
     turn = _current_turn(state)
     try:
-        movement = begin_hopping(
-            state.layout,
-            turn.target_house_id,
-            movement_path,
-        )
+        movement = begin_hopping(state.layout, turn.target_house_id, movement_path)
     except MovementValidationError as exc:
         return _movement_failure(state, str(exc))
     return replace(state, turn=replace(turn, movement=movement))
@@ -185,7 +176,9 @@ def _pickup_stone(state: GameState) -> GameState:
     if turn.movement is None or not can_pickup_stone(turn.movement):
         return _movement_failure(state, "stone_pickup_requires_one_leg_return_to_target")
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
+        replace(stone, location_house_id=None, in_hand=True)
+        if stone.id == turn.stone_id
+        else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
@@ -205,6 +198,18 @@ def _select_claim(state: GameState, action: GameAction) -> GameState:
     _require_phase(state, GamePhase.CLAIM_SELECTION)
     if action.house_id is None or action.selection_mode is None:
         raise InvalidTransitionError("claim selection requires house_id and selection_mode")
+    try:
+        selection_mode = ClaimSelectionMode(action.selection_mode)
+    except ValueError as exc:
+        raise InvalidTransitionError(
+            "selection_mode must be facing or back_facing"
+        ) from exc
+
+    turn = _current_turn(state)
+    if turn.completed_house_id is None:
+        raise InvalidTransitionError("claim requires a completed house")
+    if action.house_id != turn.completed_house_id:
+        raise InvalidTransitionError("claim house must be the completed house")
     if action.house_id not in state.layout_ids:
         raise InvalidTransitionError("claim house must exist")
     if action.house_id in state.ownership:
@@ -212,30 +217,59 @@ def _select_claim(state: GameState, action: GameAction) -> GameState:
     player_id = state.current_player_id
     if player_id is None:
         raise InvalidTransitionError("claim selection requires a current player")
+    if not state.can_attempt_claim(player_id):
+        raise InvalidTransitionError("claim attempt is still on cooldown")
+
     claim = ClaimState(
         selected_house_id=action.house_id,
         selected_player_id=player_id,
-        selection_mode=action.selection_mode,
+        selection_mode=selection_mode,
+        attempt_round=state.round.number,
     )
     return replace(state, phase=GamePhase.CLAIM_RESOLUTION, claim=claim)
 
 
-def _resolve_claim(state: GameState, success: bool | None) -> GameState:
+def _resolve_claim(state: GameState, action: GameAction) -> GameState:
     _require_phase(state, GamePhase.CLAIM_RESOLUTION)
-    if success is None:
-        raise InvalidTransitionError("claim resolution requires success")
+    if action.success is None:
+        raise InvalidTransitionError("claim throw resolution requires success")
     claim = state.claim
     if claim.selected_house_id is None or claim.selected_player_id is None:
         raise InvalidTransitionError("cannot resolve an empty claim")
+    if claim.selection_mode is None:
+        raise InvalidTransitionError("claim selection mode is missing")
+
+    if not action.success:
+        retry_round = state.round.number + state.config.claim_retry_rounds
+        retry_until = dict(state.claim_retry_until_round)
+        retry_until[claim.selected_player_id] = retry_round
+        resolved = replace(
+            claim,
+            resolved=True,
+            successful=False,
+            failure_reason=action.failure_reason or "claim_throw_failed",
+        )
+        return replace(
+            state,
+            phase=GamePhase.TURN_END,
+            claim=resolved,
+            claim_retry_until_round=retry_until,
+        )
+
+    if claim.selected_house_id in state.ownership:
+        raise InvalidTransitionError("already-owned house cannot be claimed")
+
     ownership = dict(state.ownership)
-    if success:
-        if claim.selected_house_id in ownership:
-            raise InvalidTransitionError("already-owned house cannot be claimed")
-        ownership[claim.selected_house_id] = claim.selected_player_id
-    resolved = replace(claim, resolved=True, successful=success)
+    ownership[claim.selected_house_id] = claim.selected_player_id
+    resolved = replace(
+        claim,
+        resolved=True,
+        successful=True,
+        failure_reason=None,
+    )
     return replace(
         state,
-        phase=GamePhase.NEXT_HOUSE if success else GamePhase.TURN_END,
+        phase=GamePhase.NEXT_HOUSE,
         ownership=ownership,
         claim=resolved,
     )
@@ -277,12 +311,15 @@ def _next_player(state: GameState) -> GameState:
         -1,
     )
     next_index = (current_index + 1) % len(ordered)
+    next_player_id = ordered[next_index].id
+    round_number = state.round.number + (1 if next_index == 0 else 0)
     return replace(
         state,
-        current_player_id=ordered[next_index].id,
+        current_player_id=next_player_id,
         phase=GamePhase.TURN_START,
         turn=None,
         claim=ClaimState(),
+        round=replace(state.round, number=round_number),
     )
 
 
@@ -317,7 +354,7 @@ def transition(state: GameState, action: GameAction) -> TransitionResult:
         GameActionType.PICKUP_STONE: lambda: _pickup_stone(state),
         GameActionType.COMPLETE_HOUSE: lambda: _complete_house(state),
         GameActionType.SELECT_CLAIM: lambda: _select_claim(state, action),
-        GameActionType.RESOLVE_CLAIM: lambda: _resolve_claim(state, action.success),
+        GameActionType.RESOLVE_CLAIM: lambda: _resolve_claim(state, action),
         GameActionType.NEXT_HOUSE: lambda: _next_house(state),
         GameActionType.END_TURN: lambda: _end_turn(state),
         GameActionType.NEXT_PLAYER: lambda: _next_player(state),
