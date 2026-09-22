@@ -4,6 +4,7 @@ from jumpup.physics import (
     StoneInitialState,
     ThrowStatus,
     point_inside_strict,
+    point_on_boundary,
     simulate_throw,
 )
 
@@ -195,8 +196,6 @@ def test_physics_config_rejects_invalid_parameters() -> None:
         else:
             raise AssertionError(f"expected ValueError for {kwargs}")
 
-
-from jumpup.physics import point_on_boundary
 
 
 def test_throw_is_deterministic_for_identical_inputs() -> None:
