@@ -197,7 +197,6 @@ def test_physics_config_rejects_invalid_parameters() -> None:
             raise AssertionError(f"expected ValueError for {kwargs}")
 
 
-
 def test_throw_is_deterministic_for_identical_inputs() -> None:
     initial = StoneInitialState(
         position=Point(5, 5),
