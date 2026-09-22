@@ -41,3 +41,14 @@ def test_end_game_without_override_calculates_tie() -> None:
     assert state.phase is GamePhase.GAME_OVER
     assert state.winner.player_id == "p1"
     assert state.winner.tied_player_ids == ()
+
+
+def test_end_game_calculates_true_tie() -> None:
+    state = make_state()
+    state = GameState(**{**state.__dict__, "ownership": {"h1": "p1"}})
+    state = transition(state, GameAction.start_game()).state
+    state = transition(state, GameAction.end_game()).state
+
+    assert state.scores == {"p1": 1, "p2": 0}
+    assert state.winner.player_id == "p1"
+    assert state.winner.tied_player_ids == ()
