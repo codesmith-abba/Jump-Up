@@ -20,7 +20,24 @@ from .model import (
 from .transition import InvalidTransitionError, TransitionResult, transition
 
 __all__ = [
-    "Bounds", "ClaimState", "GameAction", "GameActionType", "GameConfig", "GamePhase",
-    "GameState", "House", "HouseGeometry", "InvalidTransitionError", "Layout", "LayoutType",
-    "LayoutDataError", "Player", "RoundState", "Stone", "TransitionResult", "TurnState", "WinnerState",
+    "Bounds",
+    "ClaimState",
+    "GameAction",
+    "GameActionType",
+    "GameConfig",
+    "GamePhase",
+    "GameState",
+    "House",
+    "HouseGeometry",
+    "InvalidTransitionError",
+    "Layout",
+    "LayoutDataError",
+    "LayoutType",
+    "Player",
+    "Point",
+    "RoundState",
+    "Stone",
+    "TransitionResult",
+    "TurnState",
+    "WinnerState",
 ]
