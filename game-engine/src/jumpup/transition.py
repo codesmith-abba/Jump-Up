@@ -13,7 +13,14 @@ from .model import (
     TurnState,
     WinnerState,
 )
-from .movement import MovementValidationError, begin_hopping, begin_return, can_pickup_stone, hop
+from .movement import (
+    MovementDirection,
+    MovementValidationError,
+    begin_hopping,
+    begin_return,
+    can_pickup_stone,
+    hop,
+)
 
 
 class InvalidTransitionError(ValueError):
@@ -139,7 +146,13 @@ def _begin_hopping_out(state: GameState, movement_path: tuple[str, ...] | None) 
         movement = begin_hopping(state.layout, turn.target_house_id, movement_path)
     except MovementValidationError as exc:
         return _movement_failure(state, str(exc))
-    return replace(state, turn=replace(turn, movement=movement))
+
+    phase = (
+        GamePhase.HOPPING_OUT
+        if movement.direction is MovementDirection.OUTBOUND
+        else GamePhase.HOPPING_BACK
+    )
+    return replace(state, phase=phase, turn=replace(turn, movement=movement))
 
 
 def _movement_failure(state: GameState, reason: str) -> GameState:
