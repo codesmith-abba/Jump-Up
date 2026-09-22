@@ -491,5 +491,6 @@ def test_end_game_is_deterministic_without_override() -> None:
     second = transition(state, GameAction.end_game()).state
     assert first == second
     assert first.phase is GamePhase.GAME_OVER
-    assert first.winner.player_id == "p1"
+    assert first.winner.player_id is None
+    assert first.winner.tied_player_ids == ("p1", "p2")
     assert first.winner.is_final is True
