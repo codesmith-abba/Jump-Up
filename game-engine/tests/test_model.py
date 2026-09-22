@@ -48,7 +48,7 @@ def advance_to_claim_selection(state: GameState) -> GameState:
         GameAction.begin_turn("p1"),
         GameAction.throw("h1"),
         GameAction.resolve_throw(True),
-        GameAction.begin_hopping_out(),
+        GameAction.begin_hopping_out(("h2", "h3")),
         GameAction.hop("h2", Point(5, 5)),
         GameAction.hop("h3", Point(5, 5)),
         GameAction.begin_hopping_back(),
@@ -68,7 +68,7 @@ def start_successful_hopping(state: GameState) -> GameState:
         GameAction.begin_turn("p1"),
         GameAction.throw("h1"),
         GameAction.resolve_throw(True),
-        GameAction.begin_hopping_out(),
+        GameAction.begin_hopping_out(("h2", "h3")),
     ):
         state = transition(state, action).state
     return state
@@ -120,7 +120,7 @@ def test_explicit_lifecycle_transitions() -> None:
     assert state.stones[0].in_hand is False
     assert state.stones[0].location_house_id == "h1"
 
-    state = transition(state, GameAction.begin_hopping_out()).state
+    state = transition(state, GameAction.begin_hopping_out(("h2", "h3"))).state
     assert state.phase is GamePhase.HOPPING_OUT
     assert state.turn is not None
     assert state.turn.movement is not None
