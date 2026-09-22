@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
+from .geometry import HouseGeometry
+
 
 class LayoutType(str, Enum):
     HEART = "heart"
@@ -37,6 +39,7 @@ class House:
     id: str
     number: int
     sequence_index: int
+    geometry: HouseGeometry
 
     def __post_init__(self) -> None:
         if not self.id:
@@ -236,6 +239,24 @@ class GameState:
                         "id": house.id,
                         "number": house.number,
                         "sequence_index": house.sequence_index,
+                        "geometry": {
+                            "boundary": [
+                                {"x": point.x, "y": point.y}
+                                for point in house.geometry.boundary
+                            ],
+                            "bounds": {
+                                "min_x": house.geometry.bounds.min_x,
+                                "min_y": house.geometry.bounds.min_y,
+                                "max_x": house.geometry.bounds.max_x,
+                                "max_y": house.geometry.bounds.max_y,
+                            },
+                            "center": {
+                                "x": house.geometry.center.x,
+                                "y": house.geometry.center.y,
+                            },
+                            "width": house.geometry.width,
+                            "height": house.geometry.height,
+                        },
                     }
                     for house in self.layout.houses
                 ],
