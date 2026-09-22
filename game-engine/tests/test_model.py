@@ -62,6 +62,18 @@ def advance_to_claim_selection(state: GameState) -> GameState:
     return state
 
 
+def start_successful_hopping(state: GameState) -> GameState:
+    for action in (
+        GameAction.start_game(),
+        GameAction.begin_turn("p1"),
+        GameAction.throw("h1"),
+        GameAction.resolve_throw(True),
+        GameAction.begin_hopping_out(),
+    ):
+        state = transition(state, action).state
+    return state
+
+
 def test_initial_state() -> None:
     state = make_state()
     assert state.phase is GamePhase.SETUP
@@ -132,6 +144,60 @@ def test_explicit_lifecycle_transitions() -> None:
 
     state = transition(state, GameAction.complete_house()).state
     assert state.phase is GamePhase.CLAIM_SELECTION
+
+
+def test_movement_boundary_violation_fails_turn() -> None:
+    state = start_successful_hopping(make_state())
+    state = transition(state, GameAction.hop("h2", Point(0, 5))).state
+
+    assert state.phase is GamePhase.TURN_END
+    assert state.turn is not None
+    assert state.turn.failed is True
+    assert "boundary" in (state.turn.failure_reason or "")
+
+
+def test_second_foot_in_unowned_house_fails_turn() -> None:
+    state = start_successful_hopping(make_state())
+    state = transition(state, GameAction.hop("h2", Point(5, 5), feet=2)).state
+
+    assert state.phase is GamePhase.TURN_END
+    assert state.turn is not None
+    assert state.turn.failed is True
+    assert "owned house" in (state.turn.failure_reason or "")
+
+
+def test_stone_house_skip_violation_fails_turn() -> None:
+    state = start_successful_hopping(make_state())
+    state = transition(state, GameAction.hop("h1", Point(5, 5))).state
+
+    assert state.phase is GamePhase.TURN_END
+    assert state.turn is not None
+    assert state.turn.failed is True
+
+
+def test_pickup_before_return_to_stone_fails_turn() -> None:
+    state = start_successful_hopping(make_state())
+    state = transition(state, GameAction.hop("h2", Point(5, 5))).state
+    state = transition(state, GameAction.hop("h3", Point(5, 5))).state
+    state = transition(state, GameAction.begin_hopping_back()).state
+    state = transition(state, GameAction.pickup_stone()).state
+
+    assert state.phase is GamePhase.TURN_END
+    assert state.turn is not None
+    assert state.turn.failed is True
+    assert state.turn.failure_reason == "stone_pickup_requires_one_leg_return_to_target"
+
+
+def test_owned_house_allows_rest_during_hopping() -> None:
+    state = start_successful_hopping(make_state())
+    state = GameState(**{**state.__dict__, "ownership": {"h2": "p1"}})
+    state = transition(state, GameAction.hop("h2", Point(5, 5), feet=2)).state
+
+    assert state.phase is GamePhase.HOPPING_OUT
+    assert state.turn is not None
+    assert state.turn.movement is not None
+    assert state.turn.movement.both_feet is True
+    assert state.turn.movement.current_house_id == "h2"
 
 
 def test_successful_claim_is_authoritatively_recorded() -> None:
