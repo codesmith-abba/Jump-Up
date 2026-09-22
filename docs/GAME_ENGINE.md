@@ -175,3 +175,59 @@ Phase 7 does not implement:
 - multiplayer networking;
 - UI animation;
 - new physics behavior.
+
+
+## Phase 9 — Headless simulation
+
+The `game-engine/src/jumpup/simulation.py` module provides a headless execution layer over the authoritative game engine.
+
+The simulator:
+
+- accepts any valid `Layout`;
+- supports 2–4 players;
+- uses deterministic seeds;
+- delegates decisions to an `ActionProvider`;
+- applies all game actions through `transition()`;
+- collects per-game metrics;
+- runs batches and reports throughput;
+- has no rendering or UI dependency.
+
+### Provider boundary
+
+```text
+ActionProvider
+    ├── RuleBasedActionProvider
+    ├── RandomActionProvider
+    ├── HumanLikeActionProvider
+    └── Future trained AI
+```
+
+The provider sees the authoritative `GameState` and returns decisions for throwing, movement, hopping, and claiming. This is the interface a future trained model will replace; the rules engine does not need to change.
+
+### Metrics
+
+`SimulationResult` records:
+
+- winner and tied players;
+- claimed houses / final scores;
+- failed throws;
+- failed hops;
+- failed claims;
+- turns;
+- rounds;
+- simulated physics duration;
+- action counts;
+- deterministic seed.
+
+`BatchResult` adds completion rate, winner counts, averages, wall-clock execution time, and games-per-second throughput.
+
+### Batch and benchmark
+
+The installed `jumpup-sim` command can run one game, batches, or a benchmark:
+
+```bash
+jumpup-sim --layout "../Python (Pygame)/houses/heart.txt" --players 2 --games 1000 --seed 42 --provider random
+jumpup-sim --layout "../Python (Pygame)/houses/heart.txt" --players 2 --games 10000 --benchmark
+```
+
+Phase 9 does not train an ML model. Its output is the execution and statistics foundation for future training-data generation and evaluation.
