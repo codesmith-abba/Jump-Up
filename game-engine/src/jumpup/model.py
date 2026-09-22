@@ -177,6 +177,12 @@ class GameState:
             raise ValueError("stone ids must be unique")
         if {stone.owner_id for stone in self.stones} - set(player_ids):
             raise ValueError("every stone owner must be a player")
+        if set(player.stone_id for player in self.players) - set(stone_ids):
+            raise ValueError("every player must reference an existing stone")
+        if len({player.stone_id for player in self.players}) != len(self.players):
+            raise ValueError("each player must reference a unique stone")
+        if set(stone.owner_id for stone in self.stones) != set(player_ids):
+            raise ValueError("each player must own exactly one stone")
         if set(self.ownership) - self.layout_ids:
             raise ValueError("ownership contains an unknown house")
         if set(self.ownership.values()) - set(player_ids):
