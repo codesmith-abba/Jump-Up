@@ -1,6 +1,8 @@
 """Authoritative, UI-independent Jump-Up game state package."""
 
 from .actions import GameAction, GameActionType
+from .geometry import Bounds, HouseGeometry, Point
+from .layouts import LayoutDataError, load_legacy_layout, load_repository_layouts
 from .model import (
     ClaimState,
     GameConfig,
@@ -18,7 +20,7 @@ from .model import (
 from .transition import InvalidTransitionError, TransitionResult, transition
 
 __all__ = [
-    "ClaimState", "GameAction", "GameActionType", "GameConfig", "GamePhase",
-    "GameState", "House", "InvalidTransitionError", "Layout", "LayoutType",
-    "Player", "RoundState", "Stone", "TransitionResult", "TurnState", "WinnerState",
+    "Bounds", "ClaimState", "GameAction", "GameActionType", "GameConfig", "GamePhase",
+    "GameState", "House", "HouseGeometry", "InvalidTransitionError", "Layout", "LayoutType",
+    "LayoutDataError", "Player", "RoundState", "Stone", "TransitionResult", "TurnState", "WinnerState",
 ]
