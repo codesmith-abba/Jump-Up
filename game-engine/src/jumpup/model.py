@@ -202,7 +202,10 @@ class GameState:
             if self.turn.movement is not None:
                 if self.turn.movement.target_house_id != self.turn.target_house_id:
                     raise ValueError("movement target must match turn target")
-                if self.turn.movement.current_house_id is not None and self.turn.movement.current_house_id not in self.layout_ids:
+                if (
+                    self.turn.movement.current_house_id is not None
+                    and self.turn.movement.current_house_id not in self.layout_ids
+                ):
                     raise ValueError("movement current house must exist in layout")
         if (
             self.claim.selected_house_id is not None
