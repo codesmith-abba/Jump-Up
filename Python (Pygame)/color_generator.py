@@ -1,5 +1,7 @@
-import pygame
 from random import randrange
+
+import pygame
+
 
 class ColorGenerator:
     def __init__(self):

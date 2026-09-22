@@ -1,4 +1,5 @@
 from jumpup import JumpUp
+
 # pygame.init()
 
 # # Screen setup
@@ -132,8 +133,3 @@ if __name__ == "__main__":
 #     clock.tick(30)
 
 # pygame.quit()
-
-
-
-
-

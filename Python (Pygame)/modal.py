@@ -1,5 +1,6 @@
 import pygame
 
+
 class Modal:
     def __init__(self):
         self.width = 0
@@ -11,7 +12,7 @@ class Modal:
 
     def open(self, surface, title, body, bg_color=(0, 0, 255), actions=None):
         # Overlay
-        self.draw_overlay(surface) 
+        self.draw_overlay(surface)
 
         w, h = surface.get_size()
         start_x = w * 0.2
@@ -37,28 +38,27 @@ class Modal:
         content_height = title_height + body_height + 20  # +20 = top/bottom padding
 
         # Content Rect (centered vertically based on content)
-        content_rect = pygame.Rect(
-            start_x,
-            start_y,
-            w - 2 * start_x,
-            content_height
-        )
+        content_rect = pygame.Rect(start_x, start_y, w - 2 * start_x, content_height)
         pygame.draw.rect(surface, bg_color, content_rect, border_radius=20)
 
         # Title Rect
         title_rect = pygame.Rect(start_x, start_y, w - 2 * start_x, title_height)
         title_txt = self.headerFont.render(title, True, self.WHITE)
-        title_txt_rect = title_txt.get_rect(center=title_rect.center, left=title_rect.left + 5)
+        title_txt_rect = title_txt.get_rect(
+            center=title_rect.center, left=title_rect.left + 5
+        )
         pygame.draw.rect(surface, self.WHITE, title_rect, 1, border_radius=20)
         surface.blit(title_txt, title_txt_rect)
 
         # Body Rect
-        body_rect = pygame.Rect(start_x, start_y + title_height, w - 2 * start_x, body_height)
+        body_rect = pygame.Rect(
+            start_x, start_y + title_height, w - 2 * start_x, body_height
+        )
 
         # Render body
         if isinstance(body, str):
-            body_txt_rect = body_txt.get_rect(center=body_rect.center) # type: ignore
-            surface.blit(body_txt, body_txt_rect) # type: ignore
+            body_txt_rect = body_txt.get_rect(center=body_rect.center)  # type: ignore
+            surface.blit(body_txt, body_txt_rect)  # type: ignore
         elif isinstance(body, pygame.Surface):
             body_img_rect = body.get_rect(center=body_rect.center)
             surface.blit(body, body_img_rect)
@@ -67,7 +67,6 @@ class Modal:
 
         # Optional: handle actions here if needed
 
-
     def update(self):
         """
         Update the modal state and handle user interactions.
@@ -75,20 +74,20 @@ class Modal:
         """
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                return 'quit'
-            
+                return "quit"
+
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
-                    return 'close'
+                    return "close"
                 elif event.key == pygame.K_RETURN:
-                    return 'confirm'
-            
+                    return "confirm"
+
             if event.type == pygame.MOUSEBUTTONDOWN:
                 if event.button == 1:  # Left mouse button
                     # Here you could check if buttons were clicked
                     # For now, just return close when clicking outside
-                    return 'close'
-        
+                    return "close"
+
         return None
 
     def draw_overlay(self, surface, color=(0, 0, 0), alpha=128):
@@ -103,4 +102,3 @@ class Modal:
         overlay = pygame.Surface(surface.get_size(), pygame.SRCALPHA)
         overlay.fill((*color, alpha))  # Unpack RGB and add alpha
         surface.blit(overlay, (0, 0))
-

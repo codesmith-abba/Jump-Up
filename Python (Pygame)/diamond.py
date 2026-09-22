@@ -11,6 +11,7 @@ class Diamond:
 
     def throw(self, angle, speed):
         import math
+
         self.vx = speed * math.cos(angle)
         self.vy = -speed * math.sin(angle)  # Negative to go upward
         self.active = True
@@ -37,6 +38,7 @@ class Diamond:
         # Bounce off left/right walls
         if self.x - self.radius <= left_x or self.x + self.radius >= right_x:
             self.vx = -self.vx * self.bounce_factor
+
 
 diamond = Diamond(100, 300)  # start position
 diamond.throw(angle=0.8, speed=12)

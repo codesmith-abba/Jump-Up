@@ -1,30 +1,33 @@
 import os
 from pathlib import Path
+
 from constants import HouseStartEndStr, HouseType
 from player import Player
 
-PLAYER1 = 'X'
-PLAYER2 = 'Y'
+PLAYER1 = "X"
+PLAYER2 = "Y"
 
 HOUSES = {}
-HOUSES_PATH = Path('houses/')
+HOUSES_PATH = Path("houses/")
 
 WON_HOUSES = [1, 4, 2]
 
+
 def load_house(fname: str, path: Path) -> list[str]:
-        with open(os.path.join(path, fname), 'r') as f:
-            return [line.rstrip("\n") for line in f if line.strip()]
+    with open(os.path.join(path, fname), "r") as f:
+        return [line.rstrip("\n") for line in f if line.strip()]
+
 
 def load_all_houses(path, name_case="lower"):
     """
     Load all house .txt files from a directory into HOUSES dict.
-    
+
     name_case: "lower", "upper", or None for original casing.
     """
     for fname in os.listdir(path):
         if fname.startswith("."):
             continue  # skip hidden/system files
-        
+
         name, ext = os.path.splitext(fname)
         if ext.lower() != ".txt":
             continue  # skip non-txt files
@@ -38,86 +41,100 @@ def load_all_houses(path, name_case="lower"):
         # Load the house into the dictionary
         HOUSES[name] = load_house(fname, path)
 
+
 load_all_houses(HOUSES_PATH)
+
 
 def is_valid_house(house_shape_key):
 
     if isinstance(house_shape_key, HouseType):
         key = house_shape_key.value
-    
+
     else:
         key = house_shape_key
-    
+
     if key not in HOUSES:
         return False
-    
+
     return True
-    
+
+
 def get_selected_house(house_shape_key):
 
     if not is_valid_house(house_shape_key):
         raise ValueError(f"Unknown House: {house_shape_key}")
-    
+
     return HOUSES[house_shape_key]
+
 
 def normalize_house_shape_key(house_shape_key):
     if isinstance(house_shape_key, HouseType):
         key = house_shape_key.value
     else:
         key = house_shape_key
-    
+
     return key
 
+
 def extract_each_shape(house_shape_key, *markars):
-        
-        if not is_valid_house(house_shape_key):
-            raise ValueError(f"Unknown House: {house_shape_key}")
 
-        # Reference patterns
-        key = house_shape_key.value if isinstance(house_shape_key, HouseType) else house_shape_key
-        
-        shape_lines = HOUSES[key]
-        shapes = []
+    if not is_valid_house(house_shape_key):
+        raise ValueError(f"Unknown House: {house_shape_key}")
 
-        capturing = False
-        current_shape = []
+    # Reference patterns
+    key = (
+        house_shape_key.value
+        if isinstance(house_shape_key, HouseType)
+        else house_shape_key
+    )
 
-        for line in shape_lines:
-            if line in markars[:2]:
-                # Start of a new shape
-                if current_shape:
-                    shapes.append(current_shape)
-                    current_shape = []
-                capturing = True
+    shape_lines = HOUSES[key]
+    shapes = []
+
+    capturing = False
+    current_shape = []
+
+    for line in shape_lines:
+        if line in markars[:2]:
+            # Start of a new shape
+            if current_shape:
+                shapes.append(current_shape)
+                current_shape = []
+            capturing = True
+            current_shape.append(line)
+        elif line in markars[2:]:
+            if capturing:
                 current_shape.append(line)
-            elif line in markars[2:]:
-                if capturing:
-                    current_shape.append(line)
-                    shapes.append(current_shape)
-                    current_shape = []
-                    capturing = False
-            elif capturing:
-                current_shape.append(line)
+                shapes.append(current_shape)
+                current_shape = []
+                capturing = False
+        elif capturing:
+            current_shape.append(line)
 
-        # In case one shape reaches EOF without bottom marker
-        if current_shape:
-            shapes.append(current_shape)
+    # In case one shape reaches EOF without bottom marker
+    if current_shape:
+        shapes.append(current_shape)
 
-        # Debug print
-        # print(shapes[0])
-        # for i, shape in enumerate(shapes):
-        #     print(f"\n--- Shape {i+1} ---")
-        #     for line in shape:
-        #         print(line)
+    # Debug print
+    # print(shapes[0])
+    # for i, shape in enumerate(shapes):
+    #     print(f"\n--- Shape {i+1} ---")
+    #     for line in shape:
+    #         print(line)
 
-        return shapes
+    return shapes
+
 
 def shapes(house_shape_key: str | HouseType):
     if not is_valid_house(house_shape_key):
         raise ValueError(f"Unknown House: {house_shape_key}")
 
     # Normalize to string key
-    s_key = house_shape_key.name if isinstance(house_shape_key, HouseType) else house_shape_key.upper()
+    s_key = (
+        house_shape_key.name
+        if isinstance(house_shape_key, HouseType)
+        else house_shape_key.upper()
+    )
 
     # Collect all start/end markers for this house
     shape_start_end = []
@@ -134,6 +151,7 @@ def shapes(house_shape_key: str | HouseType):
     result = extract_each_shape(house_shape_key, *shape_start_end)
     return result
 
+
 def get_shape_boundary(shape):
     """Find the bounding box of the '#' symbols in a shape."""
     top = None
@@ -142,7 +160,7 @@ def get_shape_boundary(shape):
     right = None
 
     for row_index, row in enumerate(shape):
-        if row == ' ##    ##' or row == '##  ##  ##':
+        if row == " ##    ##" or row == "##  ##  ##":
             continue
         for col_index, char in enumerate(row):
             if char == "#":
@@ -167,8 +185,9 @@ def get_shape_boundary(shape):
         "left": left,
         "right": right,
         "width": width,
-        "height": height
+        "height": height,
     }
+
 
 def terminal(house_shape_key: str):
     """
@@ -177,11 +196,13 @@ def terminal(house_shape_key: str):
     house = HOUSES[house_shape_key]
     if winner(house_shape_key) is not None:
         return True
-    
+
     return False
+
 
 def get_players(house_shape_key):
     pass
+
 
 def player(house_shape_key):
     """
@@ -189,7 +210,7 @@ def player(house_shape_key):
     """
     if terminal(house_shape_key):
         return None
-    
+
     player = Player()
     next_player = player.next_player()
 
@@ -204,16 +225,16 @@ def actions(house_shape_key, thrown_house):
     key = normalize_house_shape_key(house_shape_key)
     shapes_ = shapes(key)
 
-    return {
-        i for i in range(len(shapes_))
-        if i not in WON_HOUSES and i != thrown_house
-    }
+    return {i for i in range(len(shapes_)) if i not in WON_HOUSES and i != thrown_house}
+
 
 def transition_model(state, action):
     raise NotImplementedError
 
+
 def check_winner(state):
     raise NotImplementedError
+
 
 def winner(state):
     raise NotImplementedError
@@ -225,9 +246,3 @@ def winner(state):
 #     print("💥 Fail! Diamond is outside the shape boundary.")
 # else:
 #     print(f"Thrown at {dx} X {dy}")
-
-
-
-
-
-

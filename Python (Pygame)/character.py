@@ -1,6 +1,7 @@
 class Character:
     def __init__(self, x, y, animations):
-        self.x = x; self.y = y
+        self.x = x
+        self.y = y
         self.anim = animations
         self.state = "idle"
         self.frame = 0
