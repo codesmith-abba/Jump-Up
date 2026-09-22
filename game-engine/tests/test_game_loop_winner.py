@@ -45,7 +45,9 @@ def test_end_game_without_override_calculates_tie() -> None:
 
 def test_end_game_calculates_true_tie() -> None:
     state = make_state()
-    state = GameState(**{**state.__dict__, "ownership": {"h1": "p1", "h2": "p2"}})
+    state = GameState(
+        **{**state.__dict__, "ownership": {"h1": "p1", "h2": "p2"}}
+    )
     state = transition(state, GameAction.start_game()).state
     state = transition(state, GameAction.end_game()).state
 
