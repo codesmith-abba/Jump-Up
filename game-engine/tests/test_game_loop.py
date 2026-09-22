@@ -21,8 +21,7 @@ def make_state(player_count: int = 2) -> GameState:
         bounds=Bounds(0, 0, 10, 10),
     )
     houses = tuple(
-        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry)
-        for i in range(1, 4)
+        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry) for i in range(1, 4)
     )
     layout = Layout(id="full-loop", type=LayoutType.HEART, houses=houses)
     players = tuple(

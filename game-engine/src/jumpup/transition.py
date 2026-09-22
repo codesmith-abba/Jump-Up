@@ -191,9 +191,7 @@ def _pickup_stone(state: GameState) -> GameState:
     if turn.movement is None or not can_pickup_stone(turn.movement):
         return _movement_failure(state, "stone_pickup_requires_one_leg_return_to_target")
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True)
-        if stone.id == turn.stone_id
-        else stone
+        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
