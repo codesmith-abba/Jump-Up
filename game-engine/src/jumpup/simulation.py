@@ -11,8 +11,8 @@ import json
 import random
 import time
 from collections import Counter
-from collections.abc import Sequence
-from dataclasses import dataclass, field
+from collections.abc import Iterable
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -20,7 +20,7 @@ from .actions import GameAction
 from .layouts import load_legacy_layout
 from .model import ClaimSelectionMode, GamePhase, GameState, Layout, Player, Point, Stone
 from .physics import StoneInitialState, simulate_throw
-from .transition import InvalidTransitionError, transition
+from .transition import transition
 
 
 @dataclass(frozen=True)
@@ -147,8 +147,8 @@ class BatchResult:
         }
 
 
-def _average(values: object) -> float:
-    numbers = list(values)  # type: ignore[arg-type]
+def _average(values: Iterable[float]) -> float:
+    numbers = list(values)
     return sum(numbers) / len(numbers) if numbers else 0.0
 
 
@@ -353,9 +353,14 @@ def simulate_game(
 
         if state.phase is GamePhase.HOPPING_OUT:
             target = state.turn.target_house_id  # type: ignore[union-attr]
-            # The authoritative engine currently requires an explicit path.
-            # Providers can learn this path from the observation.
-            path = provider.choose_movement_path(state)
+            # The current authoritative loop only permits claiming the
+            # just-completed house. If another player already owns this target,
+            # deliberately submit an invalid path so the engine records a
+            # failed movement rather than bypassing authoritative state.
+            if target in state.ownership and state.ownership[target] != current_player:
+                path = (target,)
+            else:
+                path = provider.choose_movement_path(state)
             state = _apply(state, GameAction.begin_hopping_out(path))
             action_counts["begin_hopping_out"] += 1
             if state.phase is GamePhase.TURN_END:
@@ -371,6 +376,10 @@ def simulate_game(
                 if movement.direction.value == "outbound"
                 else movement.return_house_ids
             )
+            if movement.direction.value == "outbound" and not sequence:
+                state = _apply(state, GameAction.begin_hopping_back())
+                action_counts["begin_hopping_back"] += 1
+                continue
             current = movement.current_house_id
             expected = sequence[0] if current is None else sequence[sequence.index(current) + 1]
             decision = provider.choose_hop(state, expected)
@@ -400,18 +409,7 @@ def simulate_game(
             continue
 
         if state.phase is GamePhase.CLAIM_SELECTION:
-            # The current engine only permits claiming the just-completed house.
-            # If it is already owned, a conservative provider intentionally
-            # fails movement on that turn instead of bypassing the authority.
             completed = state.turn.completed_house_id  # type: ignore[union-attr]
-            if completed in state.ownership:
-                state = _apply(
-                    state,
-                    GameAction.end_turn(),
-                )
-                turns += 1
-                action_counts["end_turn"] += 1
-                continue
             decision = provider.choose_claim(state)
             state = _apply(state, GameAction.select_claim(completed, decision.selection_mode))
             action_counts["select_claim"] += 1
