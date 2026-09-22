@@ -1,14 +1,11 @@
-"""Authoritative serializable domain state for Jump-Up.
-
-This module deliberately models state only. Geometry, physics, and complete
-rule resolution are introduced by later engine phases.
-"""
+"""Authoritative serializable domain state for Jump-Up."""
 
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
 from .geometry import HouseGeometry
+from .movement import MovementState
 
 
 class LayoutType(str, Enum):
@@ -113,6 +110,7 @@ class TurnState:
     completed_house_id: str | None = None
     failed: bool = False
     failure_reason: str | None = None
+    movement: MovementState | None = None
 
 
 @dataclass(frozen=True)
@@ -201,6 +199,11 @@ class GameState:
                 raise ValueError("turn target house must exist in layout")
             if self.turn.stone_id not in stone_ids:
                 raise ValueError("turn stone must exist")
+            if self.turn.movement is not None:
+                if self.turn.movement.target_house_id != self.turn.target_house_id:
+                    raise ValueError("movement target must match turn target")
+                if self.turn.movement.current_house_id is not None and self.turn.movement.current_house_id not in self.layout_ids:
+                    raise ValueError("movement current house must exist in layout")
         if (
             self.claim.selected_house_id is not None
             and self.claim.selected_house_id not in self.layout_ids
@@ -269,7 +272,24 @@ class GameState:
             "players": [player.__dict__ for player in self.players],
             "stones": [stone.__dict__ for stone in self.stones],
             "current_player_id": self.current_player_id,
-            "turn": None if self.turn is None else self.turn.__dict__,
+            "turn": None
+            if self.turn is None
+            else {
+                **self.turn.__dict__,
+                "movement": None
+                if self.turn.movement is None
+                else {
+                    **self.turn.movement.__dict__,
+                    "direction": self.turn.movement.direction.value,
+                    "mode": self.turn.movement.mode.value,
+                    "position": None
+                    if self.turn.movement.position is None
+                    else {
+                        "x": self.turn.movement.position.x,
+                        "y": self.turn.movement.position.y,
+                    },
+                },
+            },
             "round": self.round.__dict__,
             "phase": self.phase.value,
             "ownership": dict(self.ownership),
