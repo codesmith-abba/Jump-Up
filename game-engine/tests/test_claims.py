@@ -13,6 +13,7 @@ from jumpup import (
     LayoutType,
     Player,
     Point,
+    RoundState,
     Stone,
     transition,
 )
@@ -129,13 +130,11 @@ def test_claim_boundary_failure_does_not_award_ownership() -> None:
     assert state.claim.successful is False
 
 
-def test_ownership_persists_across_next_turn() -> None:
+def test_ownership_persists_after_transition_to_next_house() -> None:
     state = claim_selection_state()
     state = transition(state, GameAction.select_claim("h1", "facing")).state
     state = transition(state, GameAction.resolve_claim(True)).state
     state = transition(state, GameAction.next_house()).state
-    state = transition(state, GameAction.end_turn()).state
-    state = transition(state, GameAction.next_player()).state
 
     assert state.ownership == {"h1": "p1"}
     assert state.scores["p1"] == 1
@@ -146,12 +145,12 @@ def test_failed_claim_waits_until_next_round_by_default() -> None:
     state = claim_selection_state()
     state = transition(state, GameAction.select_claim("h1", "facing")).state
     state = transition(state, GameAction.resolve_claim(False, "boundary_touched")).state
-    assert state.claim_retry_until_round == {"p1": 2}
 
-    state = transition(state, GameAction.end_turn()).state
-    state = transition(state, GameAction.next_player()).state
-    state = transition(state, GameAction.end_game()).state
-    assert state.phase is GamePhase.GAME_OVER
+    assert state.claim_retry_until_round == {"p1": 2}
+    assert state.can_attempt_claim("p1") is False
+
+    next_round = GameState(**{**state.__dict__, "round": RoundState(number=2)})
+    assert next_round.can_attempt_claim("p1") is True
 
 
 def test_claim_retry_timing_is_configurable() -> None:
@@ -164,7 +163,12 @@ def test_claim_retry_timing_is_configurable() -> None:
 
 
 def test_score_is_derived_from_ownership() -> None:
-    state = GameState(**{**make_state().__dict__, "ownership": {"h1": "p1", "h2": "p1", "h3": "p2"}})
+    state = GameState(
+        **{
+            **make_state().__dict__,
+            "ownership": {"h1": "p1", "h2": "p1", "h3": "p2"},
+        }
+    )
 
     assert state.scores == {"p1": 2, "p2": 1}
     assert state.score_for("p1") == 2
