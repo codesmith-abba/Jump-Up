@@ -12,10 +12,11 @@ from jumpup import (
     Layout,
     LayoutType,
     Player,
+    Point,
     Stone,
     transition,
 )
-from jumpup.geometry import Bounds, HouseGeometry, Point
+from jumpup.geometry import Bounds, HouseGeometry
 
 
 def make_state(player_count: int = 2) -> GameState:
@@ -24,7 +25,8 @@ def make_state(player_count: int = 2) -> GameState:
         bounds=Bounds(0, 0, 10, 10),
     )
     houses = tuple(
-        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry) for i in range(1, 4)
+        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry)
+        for i in range(1, 4)
     )
     layout = Layout(id="test-layout", type=LayoutType.HEART, houses=houses)
     players = tuple(
@@ -47,7 +49,11 @@ def advance_to_claim_selection(state: GameState) -> GameState:
         GameAction.throw("h1"),
         GameAction.resolve_throw(True),
         GameAction.begin_hopping_out(),
+        GameAction.hop("h2", Point(5, 5)),
+        GameAction.hop("h3", Point(5, 5)),
         GameAction.begin_hopping_back(),
+        GameAction.hop("h2", Point(5, 5)),
+        GameAction.hop("h1", Point(5, 5)),
         GameAction.pickup_stone(),
         GameAction.complete_house(),
     )
@@ -88,6 +94,7 @@ def test_turn_initialization() -> None:
     assert state.turn.current_house_id == "h1"
     assert state.turn.target_house_id == "h1"
     assert state.turn.stone_id == "s1"
+    assert state.turn.movement is None
 
 
 def test_explicit_lifecycle_transitions() -> None:
@@ -102,9 +109,21 @@ def test_explicit_lifecycle_transitions() -> None:
     assert state.stones[0].location_house_id == "h1"
 
     state = transition(state, GameAction.begin_hopping_out()).state
-    assert state.phase is GamePhase.HOPPING_BACK
+    assert state.phase is GamePhase.HOPPING_OUT
+    assert state.turn is not None
+    assert state.turn.movement is not None
+    assert state.turn.movement.hopping is True
+    assert state.turn.movement.current_house_id is None
+
+    state = transition(state, GameAction.hop("h2", Point(5, 5))).state
+    state = transition(state, GameAction.hop("h3", Point(5, 5))).state
+    assert state.turn.movement is not None
+    assert state.turn.movement.current_house_id == "h3"
+
     state = transition(state, GameAction.begin_hopping_back()).state
-    assert state.phase is GamePhase.STONE_PICKUP
+    assert state.phase is GamePhase.HOPPING_BACK
+    state = transition(state, GameAction.hop("h2", Point(5, 5))).state
+    state = transition(state, GameAction.hop("h1", Point(5, 5))).state
 
     state = transition(state, GameAction.pickup_stone()).state
     assert state.phase is GamePhase.HOUSE_COMPLETED
@@ -166,6 +185,7 @@ def test_next_house_and_next_player_are_deterministic() -> None:
     assert state.turn is not None
     assert state.turn.current_house_id == "h2"
     assert state.turn.target_house_id == "h2"
+    assert state.turn.movement is None
 
     state = transition(state, GameAction.end_game("p1")).state
     assert state.phase is GamePhase.GAME_OVER
