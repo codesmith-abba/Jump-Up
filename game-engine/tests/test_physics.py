@@ -60,13 +60,13 @@ def test_target_boundary_touch_is_failure() -> None:
 def test_outer_valid_area_boundary_touch_is_failure() -> None:
     result = simulate_throw(
         StoneInitialState(
-            position=Point(19, 5), height=0.5,
-            velocity_x=1.0, velocity_y=0.0, velocity_z=0.0,
+            position=Point(20, 5), height=0.5,
+            velocity_x=0.0, velocity_y=0.0, velocity_z=0.0,
         ),
         target_house_id="h1", target_house=TARGET, valid_area=VALID_AREA,
     )
-    assert result.status is ThrowStatus.FAILED_OUTSIDE_VALID_AREA
-    assert result.left_valid_area
+    assert result.status is ThrowStatus.FAILED_BOUNDARY
+    assert result.boundary_touched
 
 
 def test_stone_leaving_valid_area_is_detected_before_board_contact() -> None:
