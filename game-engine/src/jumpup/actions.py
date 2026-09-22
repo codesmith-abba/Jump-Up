@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import Enum
 
 from .geometry import Point
+from .model import ClaimSelectionMode
 
 
 class GameActionType(str, Enum):
@@ -29,7 +30,7 @@ class GameAction:
     type: GameActionType
     player_id: str | None = None
     house_id: str | None = None
-    selection_mode: str | None = None
+    selection_mode: ClaimSelectionMode | str | None = None
     success: bool | None = None
     failure_reason: str | None = None
     position: Point | None = None
@@ -78,12 +79,29 @@ class GameAction:
         return cls(GameActionType.COMPLETE_HOUSE)
 
     @classmethod
-    def select_claim(cls, house_id: str, selection_mode: str) -> "GameAction":
-        return cls(GameActionType.SELECT_CLAIM, house_id=house_id, selection_mode=selection_mode)
+    def select_claim(
+        cls,
+        house_id: str,
+        selection_mode: ClaimSelectionMode | str,
+    ) -> "GameAction":
+        return cls(
+            GameActionType.SELECT_CLAIM,
+            house_id=house_id,
+            selection_mode=selection_mode,
+        )
 
     @classmethod
-    def resolve_claim(cls, success: bool) -> "GameAction":
-        return cls(GameActionType.RESOLVE_CLAIM, success=success)
+    def resolve_claim(
+        cls,
+        success: bool,
+        failure_reason: str | None = None,
+    ) -> "GameAction":
+        """Record the deterministic result of the player's actual claim throw."""
+        return cls(
+            GameActionType.RESOLVE_CLAIM,
+            success=success,
+            failure_reason=failure_reason,
+        )
 
     @classmethod
     def next_house(cls) -> "GameAction":
