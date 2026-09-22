@@ -88,3 +88,20 @@ def test_unknown_layout_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(LayoutDataError):
         load_legacy_layout(unknown)
+
+
+@pytest.mark.parametrize("name", ["heart", "square", "rect"])
+def test_layouts_have_valid_strict_centers(name: str) -> None:
+    from jumpup.physics import point_inside_strict
+
+    layout = load_legacy_layout(layout_path(name))
+    for house in layout.houses:
+        assert point_inside_strict(house.geometry.center, house.geometry)
+
+
+def test_layout_loading_is_deterministic() -> None:
+    for name in ("heart", "square", "rect"):
+        first = load_legacy_layout(layout_path(name))
+        second = load_legacy_layout(layout_path(name))
+        assert first == second
+        assert first.houses == second.houses
