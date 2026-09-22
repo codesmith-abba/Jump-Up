@@ -8,7 +8,6 @@ from jumpup import (
     GamePhase,
     GameState,
     House,
-    House,
     InvalidTransitionError,
     Layout,
     LayoutType,
@@ -17,7 +16,6 @@ from jumpup import (
     transition,
 )
 from jumpup.geometry import Bounds, HouseGeometry, Point
-
 
 
 def make_state(player_count: int = 2) -> GameState:
