@@ -129,9 +129,7 @@ def _pickup_stone(state: GameState) -> GameState:
     _require_phase(state, GamePhase.STONE_PICKUP)
     turn = _current_turn(state)
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True)
-        if stone.id == turn.stone_id
-        else stone
+        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
@@ -140,9 +138,11 @@ def _pickup_stone(state: GameState) -> GameState:
 def _complete_house(state: GameState) -> GameState:
     _require_phase(state, GamePhase.HOUSE_COMPLETED)
     turn = _current_turn(state)
-    return replace(state, phase=GamePhase.CLAIM_SELECTION, turn=replace(
-        turn, completed_house_id=turn.current_house_id
-    ))
+    return replace(
+        state,
+        phase=GamePhase.CLAIM_SELECTION,
+        turn=replace(turn, completed_house_id=turn.current_house_id),
+    )
 
 
 def _select_claim(state: GameState, action: GameAction) -> GameState:
@@ -216,8 +216,7 @@ def _next_player(state: GameState) -> GameState:
     _require_phase(state, GamePhase.NEXT_PLAYER)
     ordered = sorted(state.players, key=lambda player: player.order)
     current_index = next(
-        (index for index, player in enumerate(ordered)
-         if player.id == state.current_player_id),
+        (index for index, player in enumerate(ordered) if player.id == state.current_player_id),
         -1,
     )
     next_index = (current_index + 1) % len(ordered)

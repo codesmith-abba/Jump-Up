@@ -201,9 +201,15 @@ class GameState:
                 raise ValueError("turn target house must exist in layout")
             if self.turn.stone_id not in stone_ids:
                 raise ValueError("turn stone must exist")
-        if self.claim.selected_house_id is not None and self.claim.selected_house_id not in self.layout_ids:
+        if (
+            self.claim.selected_house_id is not None
+            and self.claim.selected_house_id not in self.layout_ids
+        ):
             raise ValueError("claim house must exist in layout")
-        if self.claim.selected_player_id is not None and self.claim.selected_player_id not in player_ids:
+        if (
+            self.claim.selected_player_id is not None
+            and self.claim.selected_player_id not in player_ids
+        ):
             raise ValueError("claim player must exist")
 
     @property
@@ -241,8 +247,7 @@ class GameState:
                         "sequence_index": house.sequence_index,
                         "geometry": {
                             "boundary": [
-                                {"x": point.x, "y": point.y}
-                                for point in house.geometry.boundary
+                                {"x": point.x, "y": point.y} for point in house.geometry.boundary
                             ],
                             "bounds": {
                                 "min_x": house.geometry.bounds.min_x,

@@ -36,7 +36,7 @@ def _rect_geometry(cell: _Cell) -> HouseGeometry:
 def _heart_geometry(lines: list[str], start: int, end: int) -> HouseGeometry:
     """Convert one legacy heart section into a stable polygon outline."""
 
-    section = lines[start:end + 1]
+    section = lines[start : end + 1]
     if len(section) != 6:
         raise LayoutDataError("heart house must contain exactly six source rows")
     if section[0] not in {" ##    ##", "##  ##  ##"}:
@@ -52,9 +52,21 @@ def _heart_geometry(lines: list[str], start: int, end: int) -> HouseGeometry:
         raise LayoutDataError("heart house boundary is malformed")
 
     points = [
-        (1, 0), (2, 0), (4, 1), (5, 1), (7, 0), (8, 0),
-        (9, 1), (9, 3), (8, 4), (7, 5), (2, 5), (1, 4),
-        (0, 3), (0, 1), (1, 0),
+        (1, 0),
+        (2, 0),
+        (4, 1),
+        (5, 1),
+        (7, 0),
+        (8, 0),
+        (9, 1),
+        (9, 3),
+        (8, 4),
+        (7, 5),
+        (2, 5),
+        (1, 4),
+        (0, 3),
+        (0, 1),
+        (1, 0),
     ]
     boundary = tuple(Point(float(x), float(y)) for x, y in points)
     return HouseGeometry(
@@ -121,11 +133,7 @@ def _square_cells(lines: list[str]) -> list[_Cell]:
 
 
 def _heart_house_ranges(lines: list[str]) -> list[tuple[int, int]]:
-    starts = [
-        index
-        for index, line in enumerate(lines)
-        if line in {" ##    ##", "##  ##  ##"}
-    ]
+    starts = [index for index, line in enumerate(lines) if line in {" ##    ##", "##  ##  ##"}]
     if len(starts) != 8:
         raise LayoutDataError(f"heart layout must contain 8 houses, found {len(starts)}")
     for index, start in enumerate(starts[:-1]):
@@ -157,8 +165,7 @@ def load_legacy_layout(path: str | Path, layout_id: str | None = None) -> Layout
 
     if name == "heart":
         house_geometries = [
-            _heart_geometry(lines, start, end)
-            for start, end in _heart_house_ranges(lines)
+            _heart_geometry(lines, start, end) for start, end in _heart_house_ranges(lines)
         ]
         layout_type = LayoutType.HEART
     elif name == "square":
@@ -191,6 +198,5 @@ def load_repository_layouts(repo_root: str | Path) -> dict[str, Layout]:
 
     houses_dir = Path(repo_root) / "Python (Pygame)" / "houses"
     return {
-        name: load_legacy_layout(houses_dir / f"{name}.txt")
-        for name in ("heart", "square", "rect")
+        name: load_legacy_layout(houses_dir / f"{name}.txt") for name in ("heart", "square", "rect")
     }

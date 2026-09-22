@@ -53,8 +53,12 @@ class StoneInitialState:
 
     def __post_init__(self) -> None:
         values = (
-            self.position.x, self.position.y, self.height,
-            self.velocity_x, self.velocity_y, self.velocity_z,
+            self.position.x,
+            self.position.y,
+            self.height,
+            self.velocity_x,
+            self.velocity_y,
+            self.velocity_z,
         )
         if not all(math.isfinite(value) for value in values):
             raise ValueError("initial state values must be finite")
@@ -99,27 +103,21 @@ def _distance_to_segment(point: Point, start: Point, end: Point) -> float:
     length_squared = dx * dx + dy * dy
     if length_squared == 0:
         return math.hypot(point.x - start.x, point.y - start.y)
-    projection = (
-        (point.x - start.x) * dx + (point.y - start.y) * dy
-    ) / length_squared
+    projection = ((point.x - start.x) * dx + (point.y - start.y) * dy) / length_squared
     projection = max(0.0, min(1.0, projection))
     closest_x = start.x + projection * dx
     closest_y = start.y + projection * dy
     return math.hypot(point.x - closest_x, point.y - closest_y)
 
 
-def point_on_boundary(
-    point: Point, geometry: HouseGeometry, epsilon: float = 1e-9
-) -> bool:
+def point_on_boundary(point: Point, geometry: HouseGeometry, epsilon: float = 1e-9) -> bool:
     return any(
         _distance_to_segment(point, start, end) <= epsilon
         for start, end in zip(geometry.boundary, geometry.boundary[1:])
     )
 
 
-def point_inside_strict(
-    point: Point, geometry: HouseGeometry, epsilon: float = 1e-9
-) -> bool:
+def point_inside_strict(point: Point, geometry: HouseGeometry, epsilon: float = 1e-9) -> bool:
     """Point-in-polygon test where boundary points are explicitly outside."""
     if point_on_boundary(point, geometry, epsilon):
         return False
@@ -128,11 +126,9 @@ def point_inside_strict(
     for index, vertex in enumerate(vertices):
         next_vertex = vertices[(index + 1) % len(vertices)]
         if (vertex.y > point.y) != (next_vertex.y > point.y):
-            intersection_x = (
-                (next_vertex.x - vertex.x) * (point.y - vertex.y)
-                / (next_vertex.y - vertex.y)
-                + vertex.x
-            )
+            intersection_x = (next_vertex.x - vertex.x) * (point.y - vertex.y) / (
+                next_vertex.y - vertex.y
+            ) + vertex.x
             if point.x < intersection_x:
                 inside = not inside
     return inside
@@ -195,9 +191,7 @@ def simulate_throw(
     )
 
     if state.resting:
-        inside_target = point_inside_strict(
-            state.position, target_house, settings.boundary_epsilon
-        )
+        inside_target = point_inside_strict(state.position, target_house, settings.boundary_epsilon)
         return ThrowResult(
             status=(
                 ThrowStatus.SUCCEEDED
@@ -210,9 +204,7 @@ def simulate_throw(
             boundary_touched=point_on_boundary(
                 state.position, target_house, settings.boundary_epsilon
             ),
-            left_valid_area=_outside_bounds(
-                state.position, valid_area, settings.boundary_epsilon
-            ),
+            left_valid_area=_outside_bounds(state.position, valid_area, settings.boundary_epsilon),
             collision_count=1,
         )
 
@@ -222,11 +214,7 @@ def simulate_throw(
     for _ in range(max_steps):
         dt = settings.time_step
         next_vz = state.velocity_z - settings.gravity * dt
-        next_height = (
-            state.height
-            + state.velocity_z * dt
-            - 0.5 * settings.gravity * dt * dt
-        )
+        next_height = state.height + state.velocity_z * dt - 0.5 * settings.gravity * dt * dt
         next_x = state.position.x + state.velocity_x * dt
         next_y = state.position.y + state.velocity_y * dt
         next_time = state.elapsed_time + dt
@@ -244,14 +232,17 @@ def simulate_throw(
             )
             if _outside_bounds(state.position, valid_area, settings.boundary_epsilon):
                 return ThrowResult(
-                    ThrowStatus.FAILED_OUTSIDE_VALID_AREA, state,
-                    target_house_id, None, False, True, collision_count
+                    ThrowStatus.FAILED_OUTSIDE_VALID_AREA,
+                    state,
+                    target_house_id,
+                    None,
+                    False,
+                    True,
+                    collision_count,
                 )
             continue
 
-        contact_x, contact_y, fraction = _contact_point(
-            state, next_height, next_x, next_y
-        )
+        contact_x, contact_y, fraction = _contact_point(state, next_height, next_x, next_y)
         contact = Point(contact_x, contact_y)
         contact_time = state.elapsed_time + dt * fraction
         contact_vz = state.velocity_z - settings.gravity * dt * fraction
@@ -259,63 +250,108 @@ def simulate_throw(
 
         if _outside_bounds(contact, valid_area, settings.boundary_epsilon):
             contact_state = StonePhysicsState(
-                contact, 0.0, state.velocity_x, state.velocity_y,
-                contact_vz, contact_time, state.bounces, True
+                contact,
+                0.0,
+                state.velocity_x,
+                state.velocity_y,
+                contact_vz,
+                contact_time,
+                state.bounces,
+                True,
             )
             return ThrowResult(
-                ThrowStatus.FAILED_OUTSIDE_VALID_AREA, contact_state,
-                target_house_id, None, False, True, collision_count
+                ThrowStatus.FAILED_OUTSIDE_VALID_AREA,
+                contact_state,
+                target_house_id,
+                None,
+                False,
+                True,
+                collision_count,
             )
 
-        boundary_touched = (
-            point_on_boundary(contact, target_house, settings.boundary_epsilon)
-            or _on_outer_boundary(contact, valid_area, settings.boundary_epsilon)
-        )
+        boundary_touched = point_on_boundary(
+            contact, target_house, settings.boundary_epsilon
+        ) or _on_outer_boundary(contact, valid_area, settings.boundary_epsilon)
         if boundary_touched:
             contact_state = StonePhysicsState(
-                contact, 0.0, state.velocity_x, state.velocity_y,
-                contact_vz, contact_time, state.bounces, True
+                contact,
+                0.0,
+                state.velocity_x,
+                state.velocity_y,
+                contact_vz,
+                contact_time,
+                state.bounces,
+                True,
             )
             return ThrowResult(
-                ThrowStatus.FAILED_BOUNDARY, contact_state,
-                target_house_id, None, True, False, collision_count
+                ThrowStatus.FAILED_BOUNDARY,
+                contact_state,
+                target_house_id,
+                None,
+                True,
+                False,
+                collision_count,
             )
 
         if point_inside_strict(contact, target_house, settings.boundary_epsilon):
             contact_state = StonePhysicsState(
-                contact, 0.0, state.velocity_x, state.velocity_y,
-                0.0, contact_time, state.bounces, True
+                contact,
+                0.0,
+                state.velocity_x,
+                state.velocity_y,
+                0.0,
+                contact_time,
+                state.bounces,
+                True,
             )
             return ThrowResult(
-                ThrowStatus.SUCCEEDED, contact_state,
-                target_house_id, target_house_id, False, False, collision_count
+                ThrowStatus.SUCCEEDED,
+                contact_state,
+                target_house_id,
+                target_house_id,
+                False,
+                False,
+                collision_count,
             )
 
-        if (
-            state.bounces >= settings.max_bounces
-            or abs(contact_vz) <= settings.rest_vertical_speed
-        ):
+        if state.bounces >= settings.max_bounces or abs(contact_vz) <= settings.rest_vertical_speed:
             contact_state = StonePhysicsState(
-                contact, 0.0,
+                contact,
+                0.0,
                 state.velocity_x * settings.horizontal_damping,
                 state.velocity_y * settings.horizontal_damping,
-                0.0, contact_time, state.bounces, True
+                0.0,
+                contact_time,
+                state.bounces,
+                True,
             )
             return ThrowResult(
-                ThrowStatus.FAILED_RESTING_OUTSIDE_TARGET, contact_state,
-                target_house_id, None, False, False, collision_count
+                ThrowStatus.FAILED_RESTING_OUTSIDE_TARGET,
+                contact_state,
+                target_house_id,
+                None,
+                False,
+                False,
+                collision_count,
             )
 
         state = StonePhysicsState(
-            contact, 0.0,
+            contact,
+            0.0,
             state.velocity_x * settings.horizontal_damping,
             state.velocity_y * settings.horizontal_damping,
             -contact_vz * settings.restitution,
-            contact_time, state.bounces + 1, False
+            contact_time,
+            state.bounces + 1,
+            False,
         )
 
     return ThrowResult(
-        ThrowStatus.FAILED_TIMEOUT, state, target_house_id, None, False,
+        ThrowStatus.FAILED_TIMEOUT,
+        state,
+        target_house_id,
+        None,
+        False,
         _outside_bounds(state.position, valid_area, settings.boundary_epsilon),
         collision_count,
     )

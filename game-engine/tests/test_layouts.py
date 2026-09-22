@@ -19,9 +19,7 @@ def test_heart_preserves_eight_individual_houses() -> None:
     assert layout.type.value == "heart"
     assert len(layout.houses) == 8
     assert [house.number for house in layout.houses] == list(range(1, 9))
-    assert [house.id for house in layout.houses] == [
-        f"heart-h{i}" for i in range(1, 9)
-    ]
+    assert [house.id for house in layout.houses] == [f"heart-h{i}" for i in range(1, 9)]
 
 
 def test_square_splits_marker_sections_into_seven_playable_houses() -> None:
@@ -56,12 +54,8 @@ def test_geometry_contains_closed_boundary_and_derived_dimensions() -> None:
 def test_layout_house_ids_are_stable_and_ordered(name: str) -> None:
     layout = load_legacy_layout(layout_path(name))
 
-    assert [house.number for house in layout.houses] == list(
-        range(1, len(layout.houses) + 1)
-    )
-    assert [house.sequence_index for house in layout.houses] == list(
-        range(len(layout.houses))
-    )
+    assert [house.number for house in layout.houses] == list(range(1, len(layout.houses) + 1))
+    assert [house.sequence_index for house in layout.houses] == list(range(len(layout.houses)))
 
 
 def test_invalid_geometry_is_rejected() -> None:
