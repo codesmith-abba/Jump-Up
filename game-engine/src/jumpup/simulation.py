@@ -159,7 +159,20 @@ def _center(house) -> Point:
 
 def _safe_hop_decision(state: GameState, house_id: str) -> HopDecision:
     house = next(house for house in state.layout.houses if house.id == house_id)
-    feet = 2 if state.ownership.get(house_id) == state.current_player_id else 1
+    # The stone must be picked up on one leg, even when the target house is
+    # already owned by the current player. Owned houses may normally allow
+    # two feet, but using two feet on the target during the return makes the
+    # authoritative pickup rule impossible to satisfy.
+    is_return_target = (
+        state.phase is GamePhase.HOPPING_BACK
+        and state.turn is not None
+        and house_id == state.turn.target_house_id
+    )
+    feet = (
+        1
+        if is_return_target
+        else (2 if state.ownership.get(house_id) == state.current_player_id else 1)
+    )
     return HopDecision(position=_center(house), feet=feet)
 
 
