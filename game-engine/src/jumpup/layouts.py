@@ -43,6 +43,11 @@ def _heart_geometry(lines: list[str], start: int, end: int) -> HouseGeometry:
     section = lines[start:end + 1]
     if len(section) != 6:
         raise LayoutDataError("heart house must contain exactly six source rows")
+    if section[0] not in {" ##    ##", "##  ##  ##"}:
+        raise LayoutDataError("heart house top boundary is malformed")
+    expected_tail = ("#   ##   #", "#        #", "#        #", " #      #", "  #    #")
+    if tuple(section[1:]) != expected_tail:
+        raise LayoutDataError("heart house boundary is malformed")
 
     points = [
         (1, 0), (2, 0), (4, 1), (5, 1), (7, 0), (8, 0),
