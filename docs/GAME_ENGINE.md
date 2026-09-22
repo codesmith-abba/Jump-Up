@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The game engine is the single authoritative source of Jump-Up game state. Phase 2 established the foundational model and deterministic lifecycle transition boundary. Phase 3 adds renderer-independent house geometry and production layout loading.
+The game engine is the single authoritative source of Jump-Up game state. Phase 2 established the foundational model and deterministic lifecycle transition boundary. Phase 3 adds renderer-independent house geometry and production layout loading. Phase 4 adds deterministic stone physics. Phase 5 adds authoritative logical player movement and hopping validation.
 
 It is intentionally independent of React Native, Expo, Pygame, AI, networking, and rendering.
 
@@ -14,7 +14,7 @@ The authoritative snapshot is GameState. It contains:
 - House: stable ID, sequential number, and sequence index.
 - Player: stable ID, name, stone reference, and turn order.
 - Stone: stable ID, owner, current house location, and hand state.
-- TurnState: current player, current/target house, stone, completion and failure data.
+- TurnState: current player, current/target house, stone, completion/failure data, and movement state when hopping.
 - RoundState: round number and completed-turn count.
 - Ownership: house ID to player ID.
 - ClaimState: selected house/player, selection mode, and claim result.
@@ -40,11 +40,9 @@ SETUP
 → NEXT_HOUSE
 → TURN_START
 
-A failed throw moves to TURN_END. A failed claim also moves to TURN_END. A completed turn moves through NEXT_PLAYER before another turn begins.
+A failed throw or movement violation moves to TURN_END. A failed claim also moves to TURN_END. A completed turn moves through NEXT_PLAYER before another turn begins.
 
 GAME_OVER is an explicit terminal phase with WinnerState.
-
-This is a state-model foundation. Later phases define the exact traditional-game rules that determine when each transition is legal and how movement, claiming, rounds, and game completion work.
 
 ## Transition API
 
@@ -52,191 +50,69 @@ Consumers submit one explicit GameAction to:
 
 transition(GameState, GameAction) -> TransitionResult
 
-The transition function:
+The transition function checks the current phase, validates action data, creates a new GameState, leaves the input state unchanged, and returns the new state plus the applied action.
 
-1. checks the current phase;
-2. validates action data;
-3. creates a new GameState;
-4. leaves the input state unchanged;
-5. returns the new state and the applied action.
+Invalid phase/action combinations raise InvalidTransitionError. A submitted gameplay movement violation is recorded as turn failure and transitions to TURN_END.
 
-Invalid actions raise InvalidTransitionError.
+## Phase 5 — Player movement and hopping
 
-There is no UI event handling in this layer.
+Phase 5 adds `jumpup.movement`, the authoritative logical movement layer.
 
-## Authoritative ownership
+`MovementState` records:
 
-Ownership is represented centrally as:
+- player position as the latest logical `Point`;
+- current house;
+- outbound/return direction;
+- hopping/resting mode;
+- one-leg state;
+- thrown-stone target house;
+- visited houses during the current movement sequence.
 
-house_id -> player_id
+The movement implementation contains no rendering or animation concerns.
 
-A house cannot be selected for a claim when it is already owned. Successful claim resolution records the owner in the authoritative GameState.
+### Outbound movement
 
-Claim selection stores the selection mode as data rather than embedding facing/back-facing behavior into UI code. The exact mechanics of those modes remain a later rules phase.
+After a successful throw, `begin_hopping_out()` initializes one-leg hopping. The required outbound sequence is the layout's ordered houses with the stone/target house removed.
 
-## Serialization
+For a four-house layout with target house 2:
 
-GameState.to_dict() returns JSON-compatible primitives.
+`1 → 3 → 4`
 
-This is suitable as a foundation for:
+The target house is therefore skipped during outbound movement.
 
-- persistence;
-- deterministic replay;
-- simulation;
-- API transport;
-- mobile state adapters.
+### Return movement
 
-The Phase 2 dictionary format is not yet a versioned network/storage contract.
+After all required outbound houses have been visited, `begin_hopping_back()` switches direction. The player then traverses the required houses in reverse order and finally lands in the stone house.
 
-## Determinism
+For the example above:
 
-For the same GameState and GameAction, transition() produces the same resulting state.
+`4 → 3 → 1 → 2`
 
-The foundational model has no:
+Stone retrieval is legal only after the player reaches the target house during this return movement, while still in one-leg hopping state.
 
-- random number generation;
-- clocks;
-- network calls;
-- rendering state;
-- hidden global state.
+### Foot rules
 
-Future randomness must be represented explicitly and injected at a higher-level boundary.
+Normal movement uses one leg.
 
-## Validation
+A two-foot landing/rest is accepted only when the destination house is owned by the active player. An attempt to use both feet in an unowned house is a movement violation and fails the turn.
 
-The model validates:
+After resting in an owned house, a subsequent valid hop continues the required sequence and returns the movement state to one-leg hopping.
 
-- unique player IDs;
-- unique stone IDs;
-- valid player-to-stone references;
-- configured player limits;
-- valid house numbering and sequence indexes;
-- ownership references;
-- turn references;
-- current-player references;
-- valid lifecycle phase for each action;
-- target-house correctness for throws;
-- ownership restrictions for claims;
-- required claim data before claim resolution.
+### Boundary rules
 
-## What is not implemented in Phase 2
+A destination position must be strictly inside the destination house geometry. Boundary contact is rejected, and a position outside the destination house is rejected.
 
-Phase 2 does not implement:
+The existing renderer-independent geometry and Phase 4 boundary helpers are reused; no second boundary implementation was introduced.
 
-- final house geometry;
-- boundary collision mathematics;
-- throw physics;
-- hop paths;
-- foot placement validation;
-- stone trajectory simulation;
-- exact facing/back-facing selection mechanics;
-- final claim timing rules;
-- round-ending rules;
-- final winner calculation;
-- mobile UI;
-- AI;
-- networking.
+### Movement failure
 
-Those concerns remain outside this model until their dedicated phases.
+The transition layer records the validation error in `TurnState.failure_reason`, sets `TurnState.failed`, and moves the game to `TURN_END`. The player remains in the game, matching the established failure rule.
 
-## Tests
+### Rendering separation
 
-The Phase 2 test suite covers:
+The movement layer does not know about Pygame, React Native, Expo, sprites, animation frames, gestures, or frame rate. A renderer can animate a legal movement, but it cannot change the authoritative legality result.
 
-- initial state;
-- player creation;
-- stone ownership;
-- turn initialization;
-- explicit lifecycle transitions;
-- successful and failed claims;
-- failed throws;
-- house progression;
-- deterministic player/game progression;
-- ownership restrictions;
-- invalid transitions;
-- invalid model references;
-- player limits;
-- JSON serialization;
-- non-mutation of the previous state.
-
-The tests live under game-engine/tests and use the same transition function that future consumers will use.
-
-
-## Phase 3 — House and Layout System
-
-### Production representation
-
-A Layout is the complete playable arrangement. It has:
-
-- a stable layout ID;
-- a LayoutType;
-- an ordered tuple of House objects.
-
-Each House has:
-
-- a stable house ID;
-- a one-based house number;
-- a zero-based sequence index;
-- a HouseGeometry value.
-
-HouseGeometry is renderer-independent. It contains:
-
-- a closed boundary outline made of Point(x, y) values;
-- an axis-aligned Bounds value;
-- derived center, width, and height.
-
-Coordinates are layout-local coordinates derived from the preserved legacy ASCII source. They are not screen pixels and do not depend on Pygame, React Native, SVG, or a device resolution.
-
-House ownership remains dynamic game state in GameState.ownership (house_id -> player_id). It is deliberately not duplicated inside House.
-
-### Legacy ASCII interpretation
-
-The original files are preserved unchanged under Python (Pygame)/houses/.
-
-The prototype's utils.py treats marker-delimited sections as shapes. A production house is not automatically the same thing as one prototype section: a section can contain multiple playable cells.
-
-The Phase 3 loader therefore interprets the existing files as follows:
-
-| Source | Production houses | Interpretation |
-| --- | ---: | --- |
-| heart.txt | 8 | Each six-row heart section is one playable house. |
-| square.txt | 7 | Three vertically stacked single cells, followed by two rows containing two cells each. |
-| rect.txt | 6 | The lower 3×2 rectangular grid contains six playable cells. The sloped three-row header is preserved as source geometry/context but is not treated as an independent playable house because it does not form a separate closed cell. |
-
-This interpretation is an explicit production mapping of the existing source data. It does not change the original files.
-
-The legacy loader lives in jumpup.layouts.load_legacy_layout(). It validates the expected source structure and raises LayoutDataError for missing, malformed, or unsupported layout data.
-
-### Geometry and ordering
-
-House geometry is the authoritative static geometry used by future collision/physics, simulation, AI observations, and mobile rendering adapters.
-
-Layout.next_house_id() provides deterministic sequential adjacency for gameplay progression. The layout does not rely on UI coordinates for ordering.
-
-The current geometry layer intentionally does not implement collision or movement rules. Later physics/rule phases will consume the same HouseGeometry values.
-
-### Serialization
-
-GameState.to_dict() now includes each house's boundary, bounds, center, width, and height. This keeps geometry available to deterministic simulation, persistence/replay work, and mobile adapters without exposing renderer-specific objects.
-
-The dictionary remains a Phase 2/3 internal serialization shape, not a versioned public network contract.
-
-### Layout validation tests
-
-Phase 3 tests verify:
-
-- heart house count and stable IDs;
-- square splitting into individual playable cells;
-- rectangle splitting into individual playable cells;
-- house ordering and sequence indexes;
-- closed geometry boundaries;
-- bounds, centers, and dimensions;
-- invalid geometry rejection;
-- malformed source rejection;
-- unsupported layout rejection.
-
-No mobile board or renderer is implemented in this phase.
-
+For the full movement state machine, see `docs/MOVEMENT_STATE_MACHINE.md`.
 
 ## Phase 4 — Deterministic stone physics
 
