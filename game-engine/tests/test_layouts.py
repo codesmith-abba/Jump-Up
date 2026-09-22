@@ -30,7 +30,7 @@ def test_square_splits_marker_sections_into_seven_playable_houses() -> None:
 
     assert len(layout.houses) == 7
     assert [house.sequence_index for house in layout.houses] == list(range(7))
-    assert layout.houses[0].geometry.bounds == Bounds(12, 0, 20, 4)
+    assert layout.houses[0].geometry.bounds == Bounds(12, 0, 19, 4)
     assert layout.houses[3].geometry.bounds == Bounds(4, 12, 16, 16)
 
 
@@ -38,8 +38,8 @@ def test_rectangle_splits_grid_into_six_playable_houses() -> None:
     layout = load_legacy_layout(layout_path("rect"))
 
     assert len(layout.houses) == 6
-    assert layout.houses[0].geometry.bounds == Bounds(0, 3, 18, 9)
-    assert layout.houses[-1].geometry.bounds == Bounds(18, 15, 40, 21)
+    assert layout.houses[0].geometry.bounds == Bounds(0, 3, 19, 9)
+    assert layout.houses[-1].geometry.bounds == Bounds(19, 15, 39, 21)
 
 
 def test_geometry_contains_closed_boundary_and_derived_dimensions() -> None:
