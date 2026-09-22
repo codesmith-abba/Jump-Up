@@ -236,3 +236,8 @@ Phase 3 tests verify:
 - unsupported layout rejection.
 
 No mobile board or renderer is implemented in this phase.
+
+
+## Phase 4 — Deterministic stone physics
+
+Phase 4 adds `jumpup.physics`, a renderer-independent deterministic stone throw simulator. It consumes the authoritative `HouseGeometry` and `Bounds` types, uses a fixed timestep, exposes configurable physics parameters, detects target/outer boundaries and valid-area exits, supports configurable bouncing/resting, and returns an explicit throw outcome. See `docs/STONE_PHYSICS.md` for the Phase 4 contract.
