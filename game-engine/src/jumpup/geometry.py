@@ -48,6 +48,14 @@ class HouseGeometry:
             raise ValueError("house boundary must contain at least three points")
         if self.boundary[0] != self.boundary[-1]:
             raise ValueError("house boundary must be closed")
+        if any(
+            point.x < self.bounds.min_x
+            or point.x > self.bounds.max_x
+            or point.y < self.bounds.min_y
+            or point.y > self.bounds.max_y
+            for point in self.boundary
+        ):
+            raise ValueError("house boundary points must lie within bounds")
 
     @property
     def center(self) -> Point:
