@@ -1,7 +1,9 @@
-"""Explicit actions accepted by the foundational state transition model."""
+"""Explicit actions accepted by the authoritative Jump-Up engine."""
 
 from dataclasses import dataclass
 from enum import Enum
+
+from .geometry import Point
 
 
 class GameActionType(str, Enum):
@@ -10,6 +12,7 @@ class GameActionType(str, Enum):
     THROW = "throw"
     RESOLVE_THROW = "resolve_throw"
     BEGIN_HOPPING_OUT = "begin_hopping_out"
+    HOP = "hop"
     BEGIN_HOPPING_BACK = "begin_hopping_back"
     PICKUP_STONE = "pickup_stone"
     COMPLETE_HOUSE = "complete_house"
@@ -29,6 +32,8 @@ class GameAction:
     selection_mode: str | None = None
     success: bool | None = None
     failure_reason: str | None = None
+    position: Point | None = None
+    feet: int = 1
 
     @classmethod
     def start_game(cls) -> "GameAction":
@@ -49,6 +54,15 @@ class GameAction:
     @classmethod
     def begin_hopping_out(cls) -> "GameAction":
         return cls(GameActionType.BEGIN_HOPPING_OUT)
+
+    @classmethod
+    def hop(cls, house_id: str, position: Point, feet: int = 1) -> "GameAction":
+        return cls(
+            GameActionType.HOP,
+            house_id=house_id,
+            position=position,
+            feet=feet,
+        )
 
     @classmethod
     def begin_hopping_back(cls) -> "GameAction":
