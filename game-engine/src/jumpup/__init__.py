@@ -33,8 +33,6 @@ __all__ = [
     "Layout",
     "LayoutDataError",
     "LayoutType",
-    "load_legacy_layout",
-    "load_repository_layouts",
     "Player",
     "Point",
     "RoundState",
@@ -42,4 +40,7 @@ __all__ = [
     "TransitionResult",
     "TurnState",
     "WinnerState",
+    "load_legacy_layout",
+    "load_repository_layouts",
+    "transition",
 ]
