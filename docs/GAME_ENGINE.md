@@ -66,27 +66,27 @@ Phase 5 adds `jumpup.movement`, the authoritative logical movement layer.
 - hopping/resting mode;
 - one-leg state;
 - thrown-stone target house;
+- explicit layout-specific outbound movement path;
 - visited houses during the current movement sequence.
 
 The movement implementation contains no rendering or animation concerns.
 
 ### Outbound movement
 
-After a successful throw, `begin_hopping_out()` initializes one-leg hopping. The required outbound sequence is the layout's ordered houses with the stone/target house removed.
+After a successful throw, `begin_hopping_out(movement_path)` initializes one-leg hopping. The path is supplied explicitly because the exact layout-specific traversal path was not established by the project specification.
 
-For a four-house layout with target house 2:
+The validator requires that the supplied outbound path:
 
-`1 → 3 → 4`
+- contains only houses in the selected layout;
+- does not contain the target/stone house;
+- contains no duplicate houses;
+- is followed exactly by subsequent hops.
 
-The target house is therefore skipped during outbound movement.
+The engine therefore enforces the established stone-house skip without inventing a universal physical traversal path.
 
 ### Return movement
 
-After all required outbound houses have been visited, `begin_hopping_back()` switches direction. The player then traverses the required houses in reverse order and finally lands in the stone house.
-
-For the example above:
-
-`4 → 3 → 1 → 2`
+After all supplied outbound houses have been visited, `begin_hopping_back()` switches direction. The return path is the supplied outbound path in reverse, followed by the target/stone house.
 
 Stone retrieval is legal only after the player reaches the target house during this return movement, while still in one-leg hopping state.
 
@@ -96,7 +96,7 @@ Normal movement uses one leg.
 
 A two-foot landing/rest is accepted only when the destination house is owned by the active player. An attempt to use both feet in an unowned house is a movement violation and fails the turn.
 
-After resting in an owned house, a subsequent valid hop continues the required sequence and returns the movement state to one-leg hopping.
+After resting in an owned house, a subsequent valid hop continues the supplied movement path and returns the movement state to one-leg hopping.
 
 ### Boundary rules
 
