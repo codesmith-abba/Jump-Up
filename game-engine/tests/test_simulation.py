@@ -46,6 +46,7 @@ def test_rule_based_provider_completes_headless_game() -> None:
     assert result.failed_hops == 0
     assert result.failed_claims == 0
     assert result.action_counts["throw"] == 3
+    assert result.turns == result.action_counts["begin_turn"] == 3
 
 
 def test_simulation_is_reproducible_for_same_seed() -> None:
