@@ -8,6 +8,7 @@ from jumpup import (
     GamePhase,
     GameState,
     House,
+    House,
     InvalidTransitionError,
     Layout,
     LayoutType,
@@ -15,11 +16,17 @@ from jumpup import (
     Stone,
     transition,
 )
+from jumpup.geometry import Bounds, HouseGeometry, Point
+
 
 
 def make_state(player_count: int = 2) -> GameState:
+    geometry = HouseGeometry(
+        boundary=(Point(0, 0), Point(10, 0), Point(10, 10), Point(0, 10), Point(0, 0)),
+        bounds=Bounds(0, 0, 10, 10),
+    )
     houses = tuple(
-        House(id=f"h{i}", number=i, sequence_index=i - 1)
+        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry)
         for i in range(1, 4)
     )
     layout = Layout(id="test-layout", type=LayoutType.HEART, houses=houses)
@@ -218,7 +225,13 @@ def test_claim_cannot_be_resolved_before_selection() -> None:
 
 
 def test_invalid_model_references_are_rejected() -> None:
-    houses = (House(id="h1", number=1, sequence_index=0),)
+    houses = (House(
+        id="h1", number=1, sequence_index=0,
+        geometry=HouseGeometry(
+            boundary=(Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1), Point(0, 0)),
+            bounds=Bounds(0, 0, 1, 1),
+        ),
+    ),)
     layout = Layout(id="layout", type=LayoutType.SQUARE, houses=houses)
     player = Player(id="p1", name="Player 1", stone_id="missing", order=0)
 
@@ -231,7 +244,13 @@ def test_invalid_model_references_are_rejected() -> None:
 
 
 def test_player_limit_is_enforced() -> None:
-    houses = (House(id="h1", number=1, sequence_index=0),)
+    houses = (House(
+        id="h1", number=1, sequence_index=0,
+        geometry=HouseGeometry(
+            boundary=(Point(0, 0), Point(1, 0), Point(1, 1), Point(0, 1), Point(0, 0)),
+            bounds=Bounds(0, 0, 1, 1),
+        ),
+    ),)
     layout = Layout(id="layout", type=LayoutType.SQUARE, houses=houses)
     players = tuple(
         Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i)
