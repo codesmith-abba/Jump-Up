@@ -26,8 +26,7 @@ from .movement import (
     begin_return,
     can_pickup_stone,
     hop,
-    outbound_sequence,
-    return_sequence,
+    validate_movement_path,
 )
 from .physics import (
     PhysicsConfig,
@@ -75,8 +74,7 @@ __all__ = [
     "hop",
     "load_legacy_layout",
     "load_repository_layouts",
-    "outbound_sequence",
-    "return_sequence",
     "simulate_throw",
     "transition",
+    "validate_movement_path",
 ]
