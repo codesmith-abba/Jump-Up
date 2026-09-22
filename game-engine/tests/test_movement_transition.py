@@ -4,8 +4,8 @@ from jumpup import (
     Bounds,
     GameAction,
     GameConfig,
-    GameState,
     GamePhase,
+    GameState,
     House,
     Layout,
     LayoutType,
@@ -14,6 +14,7 @@ from jumpup import (
     Stone,
     transition,
 )
+from jumpup.actions import GameActionType
 from jumpup.geometry import HouseGeometry
 
 
@@ -55,8 +56,9 @@ def start_hopping() -> GameState:
 
 def test_transition_requires_explicit_layout_path() -> None:
     state = start_hopping()
+    action = GameAction(GameActionType.BEGIN_HOPPING_OUT)
     with pytest.raises(ValueError, match="explicit layout-specific movement path"):
-        transition(state, GameAction.begin_hopping_out())
+        transition(state, action)
 
 
 def test_transition_accepts_explicit_path_and_valid_hops() -> None:
