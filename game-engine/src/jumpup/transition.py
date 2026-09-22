@@ -176,9 +176,7 @@ def _pickup_stone(state: GameState) -> GameState:
     if turn.movement is None or not can_pickup_stone(turn.movement):
         return _movement_failure(state, "stone_pickup_requires_one_leg_return_to_target")
     stones = tuple(
-        replace(stone, location_house_id=None, in_hand=True)
-        if stone.id == turn.stone_id
-        else stone
+        replace(stone, location_house_id=None, in_hand=True) if stone.id == turn.stone_id else stone
         for stone in state.stones
     )
     return replace(state, phase=GamePhase.HOUSE_COMPLETED, stones=stones)
@@ -201,9 +199,7 @@ def _select_claim(state: GameState, action: GameAction) -> GameState:
     try:
         selection_mode = ClaimSelectionMode(action.selection_mode)
     except ValueError as exc:
-        raise InvalidTransitionError(
-            "selection_mode must be facing or back_facing"
-        ) from exc
+        raise InvalidTransitionError("selection_mode must be facing or back_facing") from exc
 
     turn = _current_turn(state)
     if turn.completed_house_id is None:

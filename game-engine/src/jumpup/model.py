@@ -201,7 +201,10 @@ class GameState:
             raise ValueError("ownership contains an unknown player")
         if set(self.claim_retry_until_round) - set(player_ids):
             raise ValueError("claim retry state contains an unknown player")
-        if any(round_number < self.round.number for round_number in self.claim_retry_until_round.values()):
+        if any(
+            round_number < self.round.number
+            for round_number in self.claim_retry_until_round.values()
+        ):
             raise ValueError("claim retry round cannot be earlier than current round")
         if self.current_player_id is not None and self.current_player_id not in player_ids:
             raise ValueError("current_player_id must reference a player")
