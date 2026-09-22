@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+
 from .geometry import Bounds, HouseGeometry, Point
 from .model import House, Layout, LayoutType
 
@@ -33,19 +34,20 @@ def _rect_geometry(cell: _Cell) -> HouseGeometry:
 
 
 def _heart_geometry(lines: list[str], start: int, end: int) -> HouseGeometry:
-    """Convert one legacy heart section into a stable polygon outline.
-
-    The legacy file draws each heart as ASCII boundary strokes. The production
-    outline preserves those proportions while replacing raster characters with
-    continuous renderer-independent points.
-    """
+    """Convert one legacy heart section into a stable polygon outline."""
 
     section = lines[start:end + 1]
     if len(section) != 6:
         raise LayoutDataError("heart house must contain exactly six source rows")
     if section[0] not in {" ##    ##", "##  ##  ##"}:
         raise LayoutDataError("heart house top boundary is malformed")
-    expected_tail = ("#   ##   #", "#        #", "#        #", " #      #", "  #    #")
+    expected_tail = (
+        "#   ##   #",
+        "#        #",
+        "#        #",
+        " #      #",
+        "  #    #",
+    )
     if tuple(section[1:]) != expected_tail:
         raise LayoutDataError("heart house boundary is malformed")
 
@@ -119,18 +121,20 @@ def _square_cells(lines: list[str]) -> list[_Cell]:
 
 
 def _heart_house_ranges(lines: list[str]) -> list[tuple[int, int]]:
-    starts = [index for index, line in enumerate(lines) if line in {" ##    ##", "##  ##  ##"}]
+    starts = [
+        index
+        for index, line in enumerate(lines)
+        if line in {" ##    ##", "##  ##  ##"}
+    ]
     if len(starts) != 8:
         raise LayoutDataError(f"heart layout must contain 8 houses, found {len(starts)}")
-    if lines[-1] != "    ##":
-        raise LayoutDataError("heart layout footer is malformed")
-    ranges = []
-    for index, start in enumerate(starts):
-        end = starts[index + 1] - 1 if index + 1 < len(starts) else len(lines) - 1
-        if end - start + 1 != 6:
+    for index, start in enumerate(starts[:-1]):
+        if starts[index + 1] != start + 6:
             raise LayoutDataError("heart houses must be six rows apart")
-        ranges.append((start, end))
-    return ranges
+    last_end = starts[-1] + 5
+    if last_end != len(lines) - 2 or lines[-1] != "    ##":
+        raise LayoutDataError("heart layout footer is malformed")
+    return [(start, start + 5) for start in starts]
 
 
 def _read_lines(path: Path) -> list[str]:
