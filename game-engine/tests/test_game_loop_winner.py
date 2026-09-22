@@ -21,7 +21,7 @@ def make_state() -> GameState:
         bounds=Bounds(0, 0, 10, 10),
     )
     houses = tuple(
-        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry) for i in range(1, 2)
+        House(id=f"h{i}", number=i, sequence_index=i - 1, geometry=geometry) for i in range(1, 3)
     )
     layout = Layout(id="winner-test", type=LayoutType.HEART, houses=houses)
     players = (
@@ -45,10 +45,10 @@ def test_end_game_without_override_calculates_tie() -> None:
 
 def test_end_game_calculates_true_tie() -> None:
     state = make_state()
-    state = GameState(**{**state.__dict__, "ownership": {"h1": "p1"}})
+    state = GameState(**{**state.__dict__, "ownership": {"h1": "p1", "h2": "p2"}})
     state = transition(state, GameAction.start_game()).state
     state = transition(state, GameAction.end_game()).state
 
-    assert state.scores == {"p1": 1, "p2": 0}
-    assert state.winner.player_id == "p1"
-    assert state.winner.tied_player_ids == ()
+    assert state.scores == {"p1": 1, "p2": 1}
+    assert state.winner.player_id is None
+    assert state.winner.tied_player_ids == ("p1", "p2")
