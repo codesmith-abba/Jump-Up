@@ -73,6 +73,14 @@ def test_invalid_geometry_is_rejected() -> None:
         )
 
 
+def test_geometry_outside_bounds_is_rejected() -> None:
+    with pytest.raises(ValueError):
+        HouseGeometry(
+            boundary=(Point(0, 0), Point(2, 0), Point(2, 1), Point(0, 0)),
+            bounds=Bounds(0, 0, 1, 1),
+        )
+
+
 def test_malformed_layout_is_rejected(tmp_path: Path) -> None:
     malformed = tmp_path / "square.txt"
     malformed.write_text("########\n", encoding="utf-8")
