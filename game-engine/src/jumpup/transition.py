@@ -1,7 +1,7 @@
 """Deterministic foundational state transitions for Jump-Up."""
 
+from collections.abc import Callable
 from dataclasses import dataclass, replace
-from typing import Callable
 
 from .actions import GameAction, GameActionType
 from .model import (
