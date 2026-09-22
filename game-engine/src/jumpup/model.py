@@ -31,6 +31,11 @@ class GamePhase(str, Enum):
     GAME_OVER = "game_over"
 
 
+class ClaimSelectionMode(str, Enum):
+    FACING = "facing"
+    BACK_FACING = "back_facing"
+
+
 @dataclass(frozen=True)
 class House:
     id: str
@@ -129,9 +134,11 @@ class RoundState:
 class ClaimState:
     selected_house_id: str | None = None
     selected_player_id: str | None = None
-    selection_mode: str | None = None
+    selection_mode: ClaimSelectionMode | None = None
     resolved: bool = False
     successful: bool | None = None
+    failure_reason: str | None = None
+    attempt_round: int | None = None
 
 
 @dataclass(frozen=True)
@@ -145,10 +152,13 @@ class WinnerState:
 class GameConfig:
     min_players: int = 2
     max_players: int = 4
+    claim_retry_rounds: int = 1
 
     def __post_init__(self) -> None:
         if self.min_players < 1 or self.max_players < self.min_players:
             raise ValueError("invalid player limits")
+        if self.claim_retry_rounds < 0:
+            raise ValueError("claim_retry_rounds must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -166,6 +176,7 @@ class GameState:
     claim: ClaimState = field(default_factory=ClaimState)
     winner: WinnerState = field(default_factory=WinnerState)
     config: GameConfig = field(default_factory=GameConfig)
+    claim_retry_until_round: dict[str, int] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         player_ids = [player.id for player in self.players]
@@ -188,6 +199,10 @@ class GameState:
             raise ValueError("ownership contains an unknown house")
         if set(self.ownership.values()) - set(player_ids):
             raise ValueError("ownership contains an unknown player")
+        if set(self.claim_retry_until_round) - set(player_ids):
+            raise ValueError("claim retry state contains an unknown player")
+        if any(round_number < self.round.number for round_number in self.claim_retry_until_round.values()):
+            raise ValueError("claim retry round cannot be earlier than current round")
         if self.current_player_id is not None and self.current_player_id not in player_ids:
             raise ValueError("current_player_id must reference a player")
         if self.turn is not None:
@@ -221,6 +236,23 @@ class GameState:
     @property
     def layout_ids(self) -> set[str]:
         return {house.id for house in self.layout.houses}
+
+    @property
+    def scores(self) -> dict[str, int]:
+        """Return each player's score as the number of houses they own."""
+        scores = {player.id: 0 for player in self.players}
+        for owner_id in self.ownership.values():
+            scores[owner_id] += 1
+        return scores
+
+    def score_for(self, player_id: str) -> int:
+        if player_id not in {player.id for player in self.players}:
+            raise ValueError(f"unknown player: {player_id}")
+        return self.scores[player_id]
+
+    def can_attempt_claim(self, player_id: str) -> bool:
+        """Return whether the player's configurable claim retry window has elapsed."""
+        return self.round.number >= self.claim_retry_until_round.get(player_id, self.round.number)
 
     @classmethod
     def initial(
@@ -261,10 +293,7 @@ class GameState:
                                 "max_x": house.geometry.bounds.max_x,
                                 "max_y": house.geometry.bounds.max_y,
                             },
-                            "center": {
-                                "x": house.geometry.center.x,
-                                "y": house.geometry.center.y,
-                            },
+                            "center": {"x": house.geometry.center.x, "y": house.geometry.center.y},
                             "width": house.geometry.width,
                             "height": house.geometry.height,
                         },
@@ -287,16 +316,20 @@ class GameState:
                     "mode": self.turn.movement.mode.value,
                     "position": None
                     if self.turn.movement.position is None
-                    else {
-                        "x": self.turn.movement.position.x,
-                        "y": self.turn.movement.position.y,
-                    },
+                    else {"x": self.turn.movement.position.x, "y": self.turn.movement.position.y},
                 },
             },
             "round": self.round.__dict__,
             "phase": self.phase.value,
             "ownership": dict(self.ownership),
-            "claim": self.claim.__dict__,
+            "scores": self.scores,
+            "claim": {
+                **self.claim.__dict__,
+                "selection_mode": self.claim.selection_mode.value
+                if self.claim.selection_mode is not None
+                else None,
+            },
+            "claim_retry_until_round": dict(self.claim_retry_until_round),
             "winner": {
                 "player_id": self.winner.player_id,
                 "is_final": self.winner.is_final,
