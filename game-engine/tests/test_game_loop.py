@@ -42,9 +42,18 @@ def complete_house(
     state = transition(state, GameAction.throw(target)).state
     state = transition(state, GameAction.resolve_throw(True)).state
     state = transition(state, GameAction.begin_hopping_out(path)).state
+    assert state.phase is GamePhase.HOPPING_OUT
+    assert state.turn is not None
+    assert state.turn.movement is not None
+    assert state.turn.movement.current_house_id is None
 
-    for house_id in path:
+    for index, house_id in enumerate(path):
         state = transition(state, GameAction.hop(house_id, Point(5, 5))).state
+        assert state.phase is GamePhase.HOPPING_OUT
+        assert state.turn is not None
+        assert state.turn.movement is not None
+        assert state.turn.movement.current_house_id == house_id
+        assert state.turn.movement.visited_house_ids == path[: index + 1]
 
     state = transition(state, GameAction.begin_hopping_back()).state
     for house_id in reversed(path):
