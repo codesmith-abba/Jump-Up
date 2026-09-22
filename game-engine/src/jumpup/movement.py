@@ -48,9 +48,7 @@ class MovementState:
 
     @property
     def return_house_ids(self) -> tuple[str, ...]:
-        return tuple(reversed(self.required_outbound_house_ids)) + (
-            self.target_house_id,
-        )
+        return tuple(reversed(self.required_outbound_house_ids)) + (self.target_house_id,)
 
 
 def validate_movement_path(
@@ -75,9 +73,7 @@ def begin_hopping(
     required_outbound_house_ids: tuple[str, ...],
 ) -> MovementState:
     """Start one-leg hopping from an explicitly supplied layout-specific path."""
-    validate_movement_path(
-        layout, target_house_id, required_outbound_house_ids
-    )
+    validate_movement_path(layout, target_house_id, required_outbound_house_ids)
     return MovementState(
         direction=MovementDirection.OUTBOUND,
         mode=MovementMode.HOPPING,
@@ -102,9 +98,7 @@ def _next_expected_house(state: MovementState) -> str | None:
     try:
         index = sequence.index(state.current_house_id)
     except ValueError as exc:
-        raise MovementValidationError(
-            "current house is not valid for movement direction"
-        ) from exc
+        raise MovementValidationError("current house is not valid for movement direction") from exc
     return sequence[index + 1] if index + 1 < len(sequence) else None
 
 
@@ -129,8 +123,8 @@ def hop(
     player_id: str | None = None,
 ) -> MovementState:
     """Validate and apply one logical hop/landing."""
-    if not state.hopping:
-        raise MovementValidationError("player is not currently hopping")
+    if state.mode not in (MovementMode.HOPPING, MovementMode.RESTING):
+        raise MovementValidationError("player is not currently moving")
     if feet not in (1, 2):
         raise MovementValidationError("feet must be either 1 or 2")
     if feet == 2 and (ownership or {}).get(destination_house_id) != player_id:
