@@ -350,6 +350,7 @@ def simulate_game(
 
         if state.phase is GamePhase.TURN_START:
             state = _apply(state, GameAction.begin_turn(current_player))
+            turns += 1
             action_counts["begin_turn"] += 1
             continue
 
@@ -456,7 +457,6 @@ def simulate_game(
 
         if state.phase is GamePhase.TURN_END:
             state = _apply(state, GameAction.end_turn())
-            turns += 1
             action_counts["end_turn"] += 1
             continue
 
