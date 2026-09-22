@@ -13,8 +13,7 @@ from jumpup import (
     begin_return,
     can_pickup_stone,
     hop,
-    outbound_sequence,
-    return_sequence,
+    validate_movement_path,
 )
 from jumpup.geometry import HouseGeometry
 
@@ -34,37 +33,46 @@ def make_layout(count: int = 4) -> Layout:
     )
 
 
-def test_outbound_skips_the_stone_house() -> None:
+PATH = ("h1", "h3", "h4")
+
+
+def test_explicit_path_is_required_and_validated() -> None:
     layout = make_layout()
-    assert outbound_sequence(layout, "h2") == ("h1", "h3", "h4")
-    assert return_sequence(layout, "h2") == ("h4", "h3", "h1", "h2")
+    validate_movement_path(layout, "h2", PATH)
+
+    with pytest.raises(MovementValidationError, match="skip"):
+        validate_movement_path(layout, "h2", ("h1", "h2", "h3"))
+
+    with pytest.raises(MovementValidationError, match="unknown"):
+        validate_movement_path(layout, "h2", ("h1", "h9"))
 
 
 def test_begin_hopping_starts_on_one_leg_without_inventing_start_position() -> None:
-    state = begin_hopping(make_layout(), "h2")
+    state = begin_hopping(make_layout(), "h2", PATH)
     assert state.direction is MovementDirection.OUTBOUND
     assert state.mode is MovementMode.HOPPING
     assert state.one_leg is True
     assert state.current_house_id is None
     assert state.position is None
+    assert state.required_outbound_house_ids == PATH
+    assert state.return_house_ids == ("h4", "h3", "h1", "h2")
 
 
-def test_hop_follows_required_outbound_sequence() -> None:
+def test_hop_follows_explicit_outbound_sequence() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
-    state = hop(state, layout, "h1", Point(5, 5))
-    state = hop(state, layout, "h3", Point(5, 5))
-    state = hop(state, layout, "h4", Point(5, 5))
+    state = begin_hopping(layout, "h2", PATH)
+    for house_id in PATH:
+        state = hop(state, layout, house_id, Point(5, 5))
 
     assert state.current_house_id == "h4"
-    assert state.visited_house_ids == ("h1", "h3", "h4")
+    assert state.visited_house_ids == PATH
     assert state.hopping is True
     assert state.one_leg is True
 
 
 def test_stone_house_cannot_be_landed_on_outbound() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
     state = hop(state, layout, "h1", Point(5, 5))
 
     with pytest.raises(MovementValidationError):
@@ -73,7 +81,7 @@ def test_stone_house_cannot_be_landed_on_outbound() -> None:
 
 def test_wrong_house_order_is_rejected() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
 
     with pytest.raises(MovementValidationError, match="expected house h1"):
         hop(state, layout, "h3", Point(5, 5))
@@ -81,7 +89,7 @@ def test_wrong_house_order_is_rejected() -> None:
 
 def test_boundary_touch_is_rejected() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
 
     with pytest.raises(MovementValidationError, match="boundary"):
         hop(state, layout, "h1", Point(0, 5))
@@ -89,7 +97,7 @@ def test_boundary_touch_is_rejected() -> None:
 
 def test_outside_house_is_rejected() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
 
     with pytest.raises(MovementValidationError, match="outside"):
         hop(state, layout, "h1", Point(11, 5))
@@ -97,7 +105,7 @@ def test_outside_house_is_rejected() -> None:
 
 def test_both_feet_are_rejected_in_unowned_house() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
 
     with pytest.raises(MovementValidationError, match="owned house"):
         hop(
@@ -113,7 +121,7 @@ def test_both_feet_are_rejected_in_unowned_house() -> None:
 
 def test_both_feet_are_allowed_in_owned_house() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
     state = hop(
         state,
         layout,
@@ -131,7 +139,7 @@ def test_both_feet_are_allowed_in_owned_house() -> None:
 
 def test_owned_house_rest_does_not_break_sequence() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
     state = hop(
         state,
         layout,
@@ -150,12 +158,12 @@ def test_owned_house_rest_does_not_break_sequence() -> None:
 
 def test_return_sequence_ends_at_stone_house() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
-    for house_id in ("h1", "h3", "h4"):
+    state = begin_hopping(layout, "h2", PATH)
+    for house_id in PATH:
         state = hop(state, layout, house_id, Point(5, 5))
-    state = begin_return(state, layout)
+    state = begin_return(state)
 
-    for house_id in ("h3", "h1", "h2"):
+    for house_id in ("h4", "h3", "h1", "h2"):
         state = hop(state, layout, house_id, Point(5, 5))
 
     assert state.direction is MovementDirection.RETURN
@@ -165,21 +173,22 @@ def test_return_sequence_ends_at_stone_house() -> None:
 
 def test_return_cannot_begin_before_outbound_is_complete() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
+    state = begin_hopping(layout, "h2", PATH)
     state = hop(state, layout, "h1", Point(5, 5))
 
     with pytest.raises(MovementValidationError, match="not complete"):
-        begin_return(state, layout)
+        begin_return(state)
 
 
 def test_pickup_requires_return_one_leg_at_target() -> None:
     layout = make_layout()
-    state = begin_hopping(layout, "h2")
-    for house_id in ("h1", "h3", "h4"):
+    state = begin_hopping(layout, "h2", PATH)
+    for house_id in PATH:
         state = hop(state, layout, house_id, Point(5, 5))
-    state = begin_return(state, layout)
+    state = begin_return(state)
 
     assert can_pickup_stone(state) is False
+    state = hop(state, layout, "h4", Point(5, 5))
     state = hop(state, layout, "h3", Point(5, 5))
     state = hop(state, layout, "h1", Point(5, 5))
     state = hop(state, layout, "h2", Point(5, 5))
