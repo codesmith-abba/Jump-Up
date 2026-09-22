@@ -2,7 +2,7 @@
 
 ## Purpose
 
-The game engine is the single authoritative source of Jump-Up game state. Phase 2 establishes the foundational model and deterministic lifecycle transition boundary.
+The game engine is the single authoritative source of Jump-Up game state. Phase 2 established the foundational model and deterministic lifecycle transition boundary. Phase 3 adds renderer-independent house geometry and production layout loading.
 
 It is intentionally independent of React Native, Expo, Pygame, AI, networking, and rendering.
 
@@ -160,3 +160,79 @@ The Phase 2 test suite covers:
 - non-mutation of the previous state.
 
 The tests live under game-engine/tests and use the same transition function that future consumers will use.
+
+
+## Phase 3 — House and Layout System
+
+### Production representation
+
+A Layout is the complete playable arrangement. It has:
+
+- a stable layout ID;
+- a LayoutType;
+- an ordered tuple of House objects.
+
+Each House has:
+
+- a stable house ID;
+- a one-based house number;
+- a zero-based sequence index;
+- a HouseGeometry value.
+
+HouseGeometry is renderer-independent. It contains:
+
+- a closed boundary outline made of Point(x, y) values;
+- an axis-aligned Bounds value;
+- derived center, width, and height.
+
+Coordinates are layout-local coordinates derived from the preserved legacy ASCII source. They are not screen pixels and do not depend on Pygame, React Native, SVG, or a device resolution.
+
+House ownership remains dynamic game state in GameState.ownership (house_id -> player_id). It is deliberately not duplicated inside House.
+
+### Legacy ASCII interpretation
+
+The original files are preserved unchanged under Python (Pygame)/houses/.
+
+The prototype's utils.py treats marker-delimited sections as shapes. A production house is not automatically the same thing as one prototype section: a section can contain multiple playable cells.
+
+The Phase 3 loader therefore interprets the existing files as follows:
+
+| Source | Production houses | Interpretation |
+| --- | ---: | --- |
+| heart.txt | 8 | Each six-row heart section is one playable house. |
+| square.txt | 7 | Three vertically stacked single cells, followed by two rows containing two cells each. |
+| rect.txt | 6 | The lower 3×2 rectangular grid contains six playable cells. The sloped three-row header is preserved as source geometry/context but is not treated as an independent playable house because it does not form a separate closed cell. |
+
+This interpretation is an explicit production mapping of the existing source data. It does not change the original files.
+
+The legacy loader lives in jumpup.layouts.load_legacy_layout(). It validates the expected source structure and raises LayoutDataError for missing, malformed, or unsupported layout data.
+
+### Geometry and ordering
+
+House geometry is the authoritative static geometry used by future collision/physics, simulation, AI observations, and mobile rendering adapters.
+
+Layout.next_house_id() provides deterministic sequential adjacency for gameplay progression. The layout does not rely on UI coordinates for ordering.
+
+The current geometry layer intentionally does not implement collision or movement rules. Later physics/rule phases will consume the same HouseGeometry values.
+
+### Serialization
+
+GameState.to_dict() now includes each house's boundary, bounds, center, width, and height. This keeps geometry available to deterministic simulation, persistence/replay work, and mobile adapters without exposing renderer-specific objects.
+
+The dictionary remains a Phase 2/3 internal serialization shape, not a versioned public network contract.
+
+### Layout validation tests
+
+Phase 3 tests verify:
+
+- heart house count and stable IDs;
+- square splitting into individual playable cells;
+- rectangle splitting into individual playable cells;
+- house ordering and sequence indexes;
+- closed geometry boundaries;
+- bounds, centers, and dimensions;
+- invalid geometry rejection;
+- malformed source rejection;
+- unsupported layout rejection.
+
+No mobile board or renderer is implemented in this phase.
