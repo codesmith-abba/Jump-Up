@@ -1,3 +1,5 @@
+import pytest
+
 from jumpup.geometry import Bounds, HouseGeometry, Point
 from jumpup.physics import (
     PhysicsConfig,

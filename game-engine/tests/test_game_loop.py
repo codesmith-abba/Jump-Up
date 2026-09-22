@@ -139,9 +139,7 @@ def test_complete_game_on_each_production_layout(layout_name: str) -> None:
     from jumpup.layouts import load_legacy_layout
 
     repo_root = Path(__file__).resolve().parents[2]
-    layout = load_legacy_layout(
-        repo_root / "Python (Pygame)" / "houses" / f"{layout_name}.txt"
-    )
+    layout = load_legacy_layout(repo_root / "Python (Pygame)" / "houses" / f"{layout_name}.txt")
     state = GameState.initial(
         layout,
         (
@@ -154,9 +152,7 @@ def test_complete_game_on_each_production_layout(layout_name: str) -> None:
     state = transition(state, GameAction.start_game()).state
 
     for index, target in enumerate(layout.houses):
-        state = transition(
-            state, GameAction.begin_turn(state.current_player_id or "p1")
-        ).state
+        state = transition(state, GameAction.begin_turn(state.current_player_id or "p1")).state
         path = tuple(house.id for house in layout.houses if house.id != target.id)
         state = transition(state, GameAction.throw(target.id)).state
         state = transition(state, GameAction.resolve_throw(True)).state

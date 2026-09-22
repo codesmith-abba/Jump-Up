@@ -396,8 +396,7 @@ def test_more_than_four_players_are_rejected() -> None:
     )
     layout = Layout(id="too-many", type=LayoutType.HEART, houses=houses)
     players = tuple(
-        Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i - 1)
-        for i in range(1, 6)
+        Player(id=f"p{i}", name=f"P{i}", stone_id=f"s{i}", order=i - 1) for i in range(1, 6)
     )
     stones = tuple(Stone(id=f"s{i}", owner_id=f"p{i}") for i in range(1, 6))
     with pytest.raises(ValueError, match="maximum"):
