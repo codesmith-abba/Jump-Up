@@ -56,7 +56,7 @@ def complete_house(
         assert state.turn.movement.visited_house_ids == path[: index + 1]
 
     state = transition(state, GameAction.begin_hopping_back()).state
-    for house_id in reversed(path):
+    for house_id in reversed(path[:-1]):
         state = transition(state, GameAction.hop(house_id, Point(5, 5))).state
     state = transition(state, GameAction.hop(target, Point(5, 5))).state
     state = transition(state, GameAction.pickup_stone()).state
