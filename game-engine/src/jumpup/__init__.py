@@ -33,6 +33,8 @@ __all__ = [
     "Layout",
     "LayoutDataError",
     "LayoutType",
+    "load_legacy_layout",
+    "load_repository_layouts",
     "Player",
     "Point",
     "RoundState",
