@@ -3,8 +3,7 @@
 from .actions import GameAction, GameActionType
 from .geometry import Bounds, HouseGeometry, Point
 from .layouts import LayoutDataError, load_legacy_layout, load_repository_layouts
-from .physics import PhysicsConfig, StoneInitialState, StonePhysicsState, ThrowResult, ThrowStatus, simulate_throw
-from .model import (
+from .physics import (\n    PhysicsConfig,\n    StoneInitialState,\n    StonePhysicsState,\n    ThrowResult,\n    ThrowStatus,\n    simulate_throw,\n)\nfrom .model import (
     ClaimState,
     GameConfig,
     GamePhase,
