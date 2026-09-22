@@ -18,7 +18,8 @@ from typing import Protocol
 
 from .actions import GameAction
 from .layouts import load_legacy_layout
-from .model import ClaimSelectionMode, GamePhase, GameState, Layout, Player, Point, Stone
+from .geometry import Point
+from .model import ClaimSelectionMode, GamePhase, GameState, Layout, Player, Stone
 from .physics import StoneInitialState, simulate_throw
 from .transition import transition
 
@@ -72,7 +73,7 @@ class SimulationResult:
     player_count: int
     winner: str | None
     tied_players: tuple[str, ...]
-    claimed_houses: dict[str, int]
+    claimed_houses: dict[str, str]
     failed_throws: int
     failed_hops: int
     failed_claims: int
@@ -447,7 +448,7 @@ def simulate_game(
         player_count=player_count,
         winner=state.winner.player_id,
         tied_players=state.winner.tied_player_ids,
-        claimed_houses=dict(scores),
+        claimed_houses=dict(state.ownership),
         failed_throws=failed_throws,
         failed_hops=failed_hops,
         failed_claims=failed_claims,
